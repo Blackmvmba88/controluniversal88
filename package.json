@@ -15,16 +15,20 @@
     "start:sim": "SIMULATE=1 node server/server.js",
     "open": "open http://localhost:8080",
     "smoke": "node tests/node-ws-test.js",
+    "build:client": "npx terser web/client.js -c -m -o web/client.min.js --source-map",
     "test": "node tests/run-tests.js",
     "test:py": "python -m pytest -q",
     "start:py": "python3 python/server.py"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "ws": "^8.13.0",
-    "node-hid": "^2.1.1"
+    "node-hid": "^2.1.1",
+    "ws": "^8.13.0"
   },
   "engines": {
     "node": ">=16"
+  },
+  "devDependencies": {
+    "terser": "^5.44.1"
   }
 }

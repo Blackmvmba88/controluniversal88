@@ -90,7 +90,16 @@
     </div>
   </div>
 
-  <script src="/client.js"></script>
+  <script>
+    // Try loading minified client first; fall back to unminified client.js on error
+    (function(){
+      const s = document.createElement('script');
+      s.src = '/client.min.js';
+      s.onload = function(){ /* loaded minified */ };
+      s.onerror = function(){ const f = document.createElement('script'); f.src = '/client.js'; document.body.appendChild(f); };
+      document.body.appendChild(s);
+    })();
+  </script>
   <script>
     async function refreshStatus(){
       try{
