@@ -6,6 +6,7 @@ import uvicorn
 from python.daemon import Daemon
 
 app = FastAPI()
+app.mount('/docs', StaticFiles(directory='../docs'), name='docs')
 app.mount('/', StaticFiles(directory='../web', html=True), name='web')
 
 clients = set()

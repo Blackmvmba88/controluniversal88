@@ -15,6 +15,7 @@ const PORT = process.env.PORT || 8080;
 if (process.env.LOG_LEVEL) logger.setLevel(process.env.LOG_LEVEL);
 
 app.use(express.static(path.join(__dirname, '..', 'web')));
+app.use('/docs', express.static(path.join(__dirname, '..', 'docs')));
 
 // Simple status API used by calibration UI and CLI
 app.get('/api/status', (req, res) => {
