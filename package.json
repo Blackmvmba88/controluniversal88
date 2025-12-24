@@ -12,6 +12,9 @@
     "collect": "node server/collect_samples.js",
     "collect:auto": "curl -X POST -H 'Content-Type: application/json' -d '{\"count\":2}' http://localhost:8080/api/collect/auto",
     "simulate:events": "node tests/simulate_events.js",
+    "start:sim": "SIMULATE=1 node server/server.js",
+    "open": "open http://localhost:8080",
+    "smoke": "node tests/node-ws-test.js",
     "test": "node tests/run-tests.js",
     "test:py": "python -m pytest -q",
     "start:py": "python3 python/server.py"
