@@ -65,7 +65,9 @@ SIMULATE=1 python3 python/server.py
 ```
 
 Notes:
-- Device access: to use an actual DualShock 4 you may need OS-specific permissions (macOS may require additional steps). Set `SIMULATE=0` to attempt to use HID.
+- Device access: to use an actual controller you may need OS-specific permissions (macOS may require additional steps). Set `SIMULATE=0` to attempt to use HID.
+
+> **Note:** Some controllers are *not* PlayStation/DualShock devices (for example, PowerA XBX Spectra or other XBX/Xbox controllers). This project will now attempt to detect common third‑party controllers (PowerA, XBX, Xbox, generic "Controller"). If your controller is detected but buttons are not mapped correctly, run the interactive mapping (`MAP=1`) and use the calibration UI or `server/collect_samples.js` to collect labeled samples and generate a mapping.
 - Mapping and parsing: Node and Python daemons include a best-effort DS4 parser and an interactive mapping mode.
   - Use `MAP=1` to enable mapping mode; it will print byte diffs on input so you can determine which bytes/bits correspond to physical buttons.
   - Add a `.ds4map.json` file in the repo root to override or refine the mapping (an example is provided at `.ds4map.example.json`).
@@ -88,3 +90,7 @@ UI accessibility & keyboard shortcuts:
 - Escape: Close modal or cancel current dialog
 
 The guided modal uses ARIA attributes (`role="dialog"`, `aria-labelledby`, `aria-describedby`) and manages focus while open to support keyboard navigation.
+
+```javascript
+const ds = devices.find(d => /Sony|PlayStation|Wireless Controller|PowerA|XBX|Xbox|Controller/i.test((d.manufacturer || '') + ' ' + (d.product || '')));
+```
