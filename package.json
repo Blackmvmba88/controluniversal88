@@ -1,0 +1,27 @@
+{
+  "name": "control-universal",
+  "version": "0.1.0",
+  "description": "DualShock 4 -> WebUI input monitor (prototype)",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "NODE_ENV=development node server/server.js",
+    "simulate": "SIMULATE=1 node server/server.js",
+    "map": "node server/mapper.js",
+    "auto-map": "node server/auto_map.js",
+    "collect": "node server/collect_samples.js",
+    "collect:auto": "curl -X POST -H 'Content-Type: application/json' -d '{\"count\":2}' http://localhost:8080/api/collect/auto",
+    "simulate:events": "node tests/simulate_events.js",
+    "test": "node tests/run-tests.js",
+    "test:py": "python -m pytest -q",
+    "start:py": "python3 python/server.py"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.13.0",
+    "node-hid": "^2.1.1"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
