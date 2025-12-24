@@ -1,6 +1,7 @@
 [![CI](https://github.com/Blackmvmba88/controluniversal88/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Blackmvmba88/controluniversal88/actions) [![E2E](https://github.com/Blackmvmba88/controluniversal88/actions/workflows/e2e.yml/badge.svg?branch=main)](https://github.com/Blackmvmba88/controluniversal88/actions)
 [![Release](https://img.shields.io/github/v/release/Blackmvmba88/controluniversal88)](https://github.com/Blackmvmba88/controluniversal88/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/Blackmvmba88/controluniversal88)](LICENSE)
+[![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-yes-brightgreen)](CODE_OF_CONDUCT.md)
 [![PyPI](https://img.shields.io/pypi/v/controluniversal?color=blue)](#)
 
 # ControlUniversal — DualShock 4 Web Monitor (Prototype)
