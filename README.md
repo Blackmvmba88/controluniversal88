@@ -50,7 +50,7 @@ npm run smoke:extended
 # to build a minified client script:
 npm run build:client
 ```
-
+Tip: see the **E2E tests** section below for Playwright-based end-to-end tests. Run them locally with `npm run test:e2e`.
 Quick start (Python, simulation mode):
 
 ```bash
