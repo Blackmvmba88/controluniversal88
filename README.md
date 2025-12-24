@@ -58,6 +58,9 @@ Prototype custom input mappings, test adaptive controllers, or build assistive t
 ### 🔧 **For Hardware Hackers**
 Reverse-engineer unknown controllers or prototype new HID devices. The auto-mapper saves you hours of staring at hex dumps.
 
+### 🔍 **For Repair Technicians & QA Engineers**
+Diagnose controller hardware issues without disassembly. Detect anomalous patterns like simultaneous button presses, stuck inputs, or electrical noise. Classify faults as repairable degradation vs. structural failure—all through HID event analysis.
+
 ---
 
 ## Project Status (Radical Honesty Mode)
@@ -103,6 +106,7 @@ ControlUniversal started as a DS4 monitor, but the architecture is **protocol-ag
 - **Bluetooth variant support** → decode BT-specific report formats
 - **Generic HID mapper** → point at any USB device, auto-generate parsers
 - **Advanced sensor fusion** → combine gyro + accel for 3D orientation tracking
+- **Diagnostic fault analysis** → detect anomalous input patterns (simultaneous ghost buttons, electrical noise, membrane degradation) and infer probable hardware failure modes without disassembly
 
 ### 🌌 **Long-Term (Moonshots)**
 - **ControlUniversal Protocol**: A lingua franca for physical input → digital events
