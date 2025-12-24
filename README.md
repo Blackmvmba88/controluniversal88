@@ -7,6 +7,24 @@
 
 This repo contains prototypes to monitor a DualShock 4 controller and visualize button presses in a WebUI.
 
+## E2E tests (Playwright)
+
+- **What they check:** The E2E suite verifies that the WebUI highlights controller buttons when events arrive and that the axis display updates (basic interaction smoke tests).
+- **How to run locally:**
+
+```bash
+# install deps and browsers
+npm install
+npx playwright install --with-deps
+# run E2E (Playwright will auto-start the server in SIMULATE mode)
+npm run test:e2e
+```
+
+- **Troubleshooting:** If Playwright asks to install browsers, run `npx playwright install --with-deps` (CI does this automatically). If a test times out, ensure no firewall blocks localhost:8080 and that `SIMULATE=1` is honored by your shell.
+- **CI:** The workflow `.github/workflows/e2e.yml` runs the E2E on pushes to `main` and pull requests; the README badge shows the current E2E status.
+
+
+
 Two backends are provided:
 - Node.js (recommended for quick prototyping / node-hid support)
 - Python (FastAPI) — alternative implementation
