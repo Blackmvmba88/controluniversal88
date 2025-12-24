@@ -1,13 +1,15 @@
 import asyncio
 import json
+import os
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 from python.daemon import Daemon
 
 app = FastAPI()
-app.mount('/docs', StaticFiles(directory='../docs'), name='docs')
-app.mount('/', StaticFiles(directory='../web', html=True), name='web')
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+app.mount('/docs', StaticFiles(directory=os.path.join(base_dir, 'docs')), name='docs')
+app.mount('/', StaticFiles(directory=os.path.join(base_dir, 'web'), html=True), name='web')
 
 clients = set()
 

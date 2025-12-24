@@ -57,7 +57,7 @@
 
   <!-- Mapping/Calibration -->
   <rect x="480" y="320" width="140" height="60" class="component-alt"/>
-  <text x="550" y="345" class="text">Mapping &amp;</text>
+  <text x="550" y="345" class="text">Mapping &</text>
   <text x="550" y="363" class="text-small">Calibration Tools</text>
 
   <!-- Arrows: Controller to Backends -->
