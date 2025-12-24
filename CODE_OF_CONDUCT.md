@@ -19,6 +19,8 @@ Examples of unacceptable behavior by participants include harassment, trolling, 
 
 If you are subject to or witness unacceptable behavior, please report it by contacting the project maintainers at **conduct@controluniversal.dev**. All reports will be handled with discretion and will remain confidential to the extent possible.
 
+**Security issues:** for vulnerabilities or sensitive security reports, please contact **security@controluniversal.dev** (prefer encrypted email — add your PGP public key for a secure reply) instead of opening a public issue. If email is not possible, open a GitHub issue and add the `security` label and a short notice asking maintainers to handle disclosure privately.
+
 If the above email is not appropriate for you, you may also open a private issue on GitHub and add the label `confidential` (maintainers will handle it privately).
 
 ## Enforcement
