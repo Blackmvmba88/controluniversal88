@@ -20,9 +20,17 @@ Quick start (Node, simulation mode):
 ```bash
 # install deps
 npm install
-# launch (simulation):
-SIMULATE=1 npm start
-# open http://localhost:8080/
+# launch server in simulation mode (background) and open browser:
+npm run start:dev
+# or start simulation-only and open manually:
+npm run start:sim &
+npm run open
+# to run a quick smoke test for WebSocket:
+npm run smoke
+# to run extended websocket check:
+npm run smoke:extended
+# to build a minified client script:
+npm run build:client
 ```
 
 Quick start (Python, simulation mode):

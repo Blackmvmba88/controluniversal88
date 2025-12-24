@@ -14,8 +14,10 @@
     "simulate:events": "node tests/simulate_events.js",
     "start:sim": "SIMULATE=1 node server/server.js",
     "open": "open http://localhost:8080",
+    "start:dev": "npm run start:sim & sleep 1 && npm run open",
     "smoke": "node tests/node-ws-test.js",
     "build:client": "npx terser web/client.js -c -m -o web/client.min.js --source-map",
+    "smoke:extended": "node tests/ws-extended.test.js",
     "test": "node tests/run-tests.js",
     "test:py": "python -m pytest -q",
     "start:py": "python3 python/server.py"
