@@ -1,3 +1,7 @@
+[![CI](https://github.com/Blackmvmba88/controluniversal88/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Blackmvmba88/controluniversal88/actions)
+[![Release](https://img.shields.io/github/v/release/Blackmvmba88/controluniversal88)](https://github.com/Blackmvmba88/controluniversal88/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/Blackmvmba88/controluniversal88)](LICENSE)
+
 # ControlUniversal — DualShock 4 Web Monitor (Prototype)
 
 This repo contains prototypes to monitor a DualShock 4 controller and visualize button presses in a WebUI.
