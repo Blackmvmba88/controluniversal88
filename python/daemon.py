@@ -64,7 +64,7 @@ class Daemon:
         self.mapping = self._load_map()
         self.prev_state = None
         self._device = None
-        self._recent: List[List[int]] = []  # Reportes recientes
+        self._recent: List[List[int]] = []  # Reportes recientes para heurística
 
     def _load_map(self) -> Dict[str, Any]:
         """

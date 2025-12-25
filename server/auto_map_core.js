@@ -83,12 +83,19 @@ function chooseCandidateFromDiffs(diffs) {
   
   /**
    * Cuenta el número de bits activados en un entero (población/popcount)
+   * Implementación eficiente usando operaciones bitwise
    * @param {number} x - Entero a analizar
    * @returns {number} Número de bits en 1
    */
   const popCount = (x) => {
     if (typeof x !== 'number' || x < 0) return 0;
-    return x.toString(2).replace(/0/g, '').length;
+    // Algoritmo de Brian Kernighan: más eficiente que conversión a string
+    let count = 0;
+    while (x) {
+      count++;
+      x &= x - 1; // Elimina el bit más bajo activado
+    }
+    return count;
   };
   
   for (const d of diffs) {

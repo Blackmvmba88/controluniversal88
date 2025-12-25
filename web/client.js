@@ -75,7 +75,7 @@
   /**
    * Manejar mensajes entrantes del WebSocket
    * 
-   * Procesa eventos de entrada (botones, ejes) y actualiza la UI accordingly.
+   * Procesa eventos de entrada (botones, ejes) y actualiza la UI en consecuencia.
    * También maneja mensajes de estado de calibración.
    */
   ws.addEventListener('message', (m) => {

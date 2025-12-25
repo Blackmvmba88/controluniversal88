@@ -271,7 +271,8 @@ class Daemon extends EventEmitter {
     }
     
     // Convertir a Buffer si es necesario para acceso eficiente a bytes
-    let b;
+    // Inicializar b como null y asignar solo si la conversión es exitosa
+    let b = null;
     try {
       b = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
     } catch (e) {
@@ -279,6 +280,7 @@ class Daemon extends EventEmitter {
       return;
     }
     
+    // En este punto b es garantizado no-null
     // Crear objeto de estado para este reporte
     const state = { raw: b };
 
