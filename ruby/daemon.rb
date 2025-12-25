@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require 'json'
-# Note: ryby gem is included in Gemfile but has no loadable code (documentation-only gem)
+# Note: ryby gem is included in Gemfile - it's a Russian data generator similar to Faker
 
 # DualShock 4 Controller Daemon for Ruby
 class Daemon
@@ -67,7 +67,7 @@ class Daemon
 
   def read_device
     # Placeholder for actual HID device reading
-    # This would use ryby or another HID library to read from the controller
+    # This would use an HID library (like libusb or hid_api) to read from the controller
     puts "Reading from actual device not yet implemented"
     puts "Use SIMULATE=1 for testing"
   end

@@ -5,7 +5,7 @@ require 'sinatra'
 require 'sinatra/json'
 require 'faye/websocket'
 require 'json'
-# Note: ryby gem is included in Gemfile but has no loadable code (documentation-only gem)
+# Note: ryby gem is included in Gemfile - it's a Russian data generator similar to Faker
 
 # Configuration
 set :port, ENV.fetch('PORT', 8080)

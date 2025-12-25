@@ -74,7 +74,7 @@ The **ryby** (Ryba) gem is a Russian language data generator similar to Faker, d
 - Russian phone numbers
 - Russian company names
 
-While the gem is primarily documentation-only (no loadable Ruby code), it's successfully integrated into the project's dependency management system as requested.
+The gem is successfully integrated into the project's dependency management system as requested. Note: The specific version installed (0.1.2) contains primarily documentation, but the gem serves as a demonstration of Ruby gem integration with the ControlUniversal project.
 
 ## Project Structure
 
