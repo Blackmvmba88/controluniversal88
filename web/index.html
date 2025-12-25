@@ -4,38 +4,106 @@
   <meta charset="utf-8" />
   <title>DualShock 4 Monitor — Lightweight UI</title>
   <style>
-    body { font-family: system-ui, Arial; padding: 20px; }
+    body { font-family: system-ui, Arial; padding: 20px; background: #1a1a2e; }
     .pad { width: 600px; margin: auto; }
-    .btn { fill: #444; transition: fill 120ms, filter 120ms; }
-    .btn.active { fill: #ffb86b; filter: drop-shadow(0 0 8px rgba(255,184,107,0.9)); }
-    .label { fill: #fff; font-size: 11px; pointer-events: none; }
+    
+    /* Controller body styling */
+    .controller-body { fill: url(#controller-gradient); stroke: #0a0a14; stroke-width: 2; }
+    .grip { fill: url(#grip-gradient); stroke: #0a0a14; stroke-width: 1.5; }
+    
+    /* Button base styles */
+    .btn { transition: all 120ms ease; }
+    .btn.active { filter: drop-shadow(0 0 12px currentColor) brightness(1.3); }
+    
+    /* Face buttons - DualShock 4 colors */
+    #triangle { fill: #1db954; stroke: #156a34; stroke-width: 2; }
+    #circle { fill: #e74856; stroke: #a72f38; stroke-width: 2; }
+    #cross { fill: #4a9eff; stroke: #2d5f9f; stroke-width: 2; }
+    #square { fill: #d13f87; stroke: #8b2a5a; stroke-width: 2; }
+    
+    /* D-pad */
+    .dpad { fill: #2a2a3e; stroke: #0a0a14; stroke-width: 2; }
+    .dpad.active { fill: #4a4a6e; }
+    
+    /* Shoulder buttons */
+    .shoulder { fill: url(#shoulder-gradient); stroke: #0a0a14; stroke-width: 2; }
+    .shoulder.active { fill: #5a5a7e; }
+    
+    /* Center buttons */
+    .center-btn { fill: #1a1a2e; stroke: #3a3a4e; stroke-width: 1.5; }
+    .center-btn.active { fill: #3a3a4e; }
+    
+    /* PS button */
+    #ps { fill: url(#ps-gradient); stroke: #0a0a14; stroke-width: 2; }
+    #ps.active { fill: #4a9eff; filter: drop-shadow(0 0 16px #4a9eff); }
+    
+    /* Labels */
+    .label { fill: #fff; font-size: 11px; pointer-events: none; font-weight: bold; }
   </style>
 </head>
 <body>
   <h1>DualShock 4 — Live (lightweight)</h1>
   <div class="pad">
-    <!-- Very simple illustrative SVG. IDs map to button ids emitted by daemon -->
+    <!-- Realistic DualShock 4 SVG. IDs map to button ids emitted by daemon -->
     <svg viewBox="0 0 600 300" width="100%">
-      <!-- Left cluster -->
+      <!-- Gradients for realistic look -->
+      <defs>
+        <linearGradient id="controller-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#3a3a5e;stop-opacity:1" />
+          <stop offset="50%" style="stop-color:#2a2a4e;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#1a1a3e;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="grip-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#2a2a4e;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#1a1a3e;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="shoulder-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#4a4a6e;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#2a2a4e;stop-opacity:1" />
+        </linearGradient>
+        <radialGradient id="ps-gradient">
+          <stop offset="0%" style="stop-color:#4a9eff;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#2d5f9f;stop-opacity:1" />
+        </radialGradient>
+      </defs>
+      
+      <!-- Controller body -->
+      <ellipse class="controller-body" cx="300" cy="150" rx="240" ry="110" />
+      
+      <!-- Grips -->
+      <ellipse class="grip" cx="140" cy="200" rx="50" ry="70" />
+      <ellipse class="grip" cx="460" cy="200" rx="50" ry="70" />
+      
+      <!-- Shoulder buttons -->
+      <rect id="l1" class="btn shoulder" x="90" y="20" width="120" height="16" rx="6" />
+      <rect id="r1" class="btn shoulder" x="390" y="20" width="120" height="16" rx="6" />
+      
+      <!-- D-pad -->
+      <rect id="dpad_up" class="btn dpad" x="120" y="70" width="30" height="30" rx="4" />
+      <rect id="dpad_left" class="btn dpad" x="90" y="100" width="30" height="30" rx="4" />
+      <rect id="dpad_right" class="btn dpad" x="150" y="100" width="30" height="30" rx="4" />
+      <rect id="dpad_down" class="btn dpad" x="120" y="130" width="30" height="30" rx="4" />
+
+      <!-- Face buttons (right cluster) -->
       <circle id="triangle" class="btn" cx="450" cy="80" r="18" />
+      <text class="label" x="450" y="85" text-anchor="middle">△</text>
+      
       <circle id="circle" class="btn" cx="485" cy="110" r="18" />
+      <text class="label" x="485" y="115" text-anchor="middle">○</text>
+      
       <circle id="cross" class="btn" cx="415" cy="110" r="18" />
+      <text class="label" x="415" y="115" text-anchor="middle">✕</text>
+      
       <circle id="square" class="btn" cx="450" cy="140" r="18" />
+      <text class="label" x="450" y="145" text-anchor="middle">□</text>
 
-      <!-- Dpad -->
-      <rect id="dpad_up" class="btn" x="120" y="70" width="30" height="30" />
-      <rect id="dpad_left" class="btn" x="90" y="100" width="30" height="30" />
-      <rect id="dpad_right" class="btn" x="150" y="100" width="30" height="30" />
-      <rect id="dpad_down" class="btn" x="120" y="130" width="30" height="30" />
-
-      <!-- Shoulder -->
-      <rect id="l1" class="btn" x="90" y="20" width="120" height="16" rx="6" />
-      <rect id="r1" class="btn" x="390" y="20" width="120" height="16" rx="6" />
-
-      <!-- Middle small buttons -->
-      <rect id="share" class="btn" x="260" y="90" width="24" height="18" rx="3" />
-      <rect id="options" class="btn" x="320" y="90" width="24" height="18" rx="3" />
+      <!-- Center buttons -->
+      <rect id="share" class="btn center-btn" x="260" y="90" width="24" height="18" rx="3" />
+      <rect id="options" class="btn center-btn" x="320" y="90" width="24" height="18" rx="3" />
+      
+      <!-- PS button -->
       <circle id="ps" class="btn" cx="295" cy="140" r="16" />
+      <text class="label" x="295" y="145" text-anchor="middle" style="font-size:10px">PS</text>
 
     </svg>
   </div>
