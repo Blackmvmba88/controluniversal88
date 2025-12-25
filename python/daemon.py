@@ -1,33 +1,108 @@
+"""
+Daemon de monitoreo de control DualShock 4 (Python)
+
+Parser de reportes HID de DualShock 4 con soporte para mapeo interactivo.
+Implementación Python/asyncio equivalente al daemon Node.js.
+
+Modos de operación:
+- SIMULATE=1: Genera eventos simulados sin hardware físico
+- MAP=1: Muestra diferencias de bytes para mapeo manual
+
+@module daemon
+"""
+
 import os
 import asyncio
 import json
 import random
-from typing import Callable
+import time
+from typing import Callable, Dict, List, Optional, Any
 
+# Variables de entorno para controlar el comportamiento del daemon
 SIMULATE = os.getenv('SIMULATE', '1') in ('1', 'true', 'True')
 MAP_MODE = os.getenv('MAP', '0') in ('1', 'true', 'True')
 
+# Mapeo por defecto para DualShock 4 (USB estándar)
+# Estructura idéntica a la versión Node.js para compatibilidad
 DEFAULT_MAP = {
-    'axes': { 'lstick_x': 1, 'lstick_y': 2, 'rstick_x': 3, 'rstick_y': 4, 'l2':8, 'r2':9 },
-    'buttons': {
-        'square': [5, 0x10], 'cross': [5, 0x20], 'circle': [5, 0x40], 'triangle':[5,0x80],
-        'l1':[6,0x01], 'r1':[6,0x02], 'l2_btn':[6,0x04], 'r2_btn':[6,0x08],
-        'share':[6,0x10], 'options':[6,0x20], 'lstick':[6,0x40], 'rstick':[6,0x80], 'ps':[7,0x01]
+    # Ejes analógicos: índice del byte en reportes USB (base 0)
+    'axes': {
+        'lstick_x': 1,  # Joystick izquierdo eje X
+        'lstick_y': 2,  # Joystick izquierdo eje Y
+        'rstick_x': 3,  # Joystick derecho eje X
+        'rstick_y': 4,  # Joystick derecho eje Y
+        'l2': 8,        # Gatillo L2 (analógico 0-255)
+        'r2': 9         # Gatillo R2 (analógico 0-255)
     },
-    'dpad': {'byte':5,'mask':0x0f}
+    # Botones: [índiceDeByte, máscaraDeBit]
+    'buttons': {
+        'square': [5, 0x10], 'cross': [5, 0x20], 'circle': [5, 0x40], 'triangle': [5, 0x80],
+        'l1': [6, 0x01], 'r1': [6, 0x02], 'l2_btn': [6, 0x04], 'r2_btn': [6, 0x08],
+        'share': [6, 0x10], 'options': [6, 0x20], 'lstick': [6, 0x40], 'rstick': [6, 0x80],
+        'ps': [7, 0x01]
+    },
+    # D-pad: nibble bajo codifica dirección 0-7
+    'dpad': {'byte': 5, 'mask': 0x0f}
 }
 
+
 class Daemon:
+    """
+    Clase Daemon - Controlador principal del monitor de entrada (Python)
+    
+    Gestiona la conexión con el dispositivo HID, parsea reportes
+    y emite eventos normalizados de entrada mediante callbacks.
+    """
+    
     def __init__(self):
+        """
+        Constructor del Daemon
+        
+        Inicializa el estado pero NO inicia la conexión automáticamente.
+        Llamar a start() explícitamente desde el servidor.
+        """
         self.mapping = self._load_map()
         self.prev_state = None
+        self._device = None
+        self._recent: List[List[int]] = []  # Reportes recientes para heurística
 
-    def _load_map(self):
+    def _load_map(self) -> Dict[str, Any]:
+        """
+        Carga el mapeo de configuración desde archivo .ds4map.json
+        
+        Si el archivo no existe o no es válido, usa el mapeo por defecto.
+        
+        Returns:
+            Dict con estructura {axes, buttons, dpad}
+        """
         try:
-            with open('.ds4map.json','r') as f:
-                print('Loaded .ds4map.json mapping')
-                return json.load(f)
-        except Exception:
+            # Verificar que el archivo existe
+            if not os.path.exists('.ds4map.json'):
+                print('Archivo .ds4map.json no encontrado, usando mapeo por defecto')
+                return DEFAULT_MAP
+            
+            with open('.ds4map.json', 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                
+                # Validar que no esté vacío
+                if not content:
+                    print('Archivo .ds4map.json vacío, usando mapeo por defecto')
+                    return DEFAULT_MAP
+                
+                mapping = json.loads(content)
+                
+                # Validar estructura básica
+                if not isinstance(mapping, dict):
+                    print('Mapeo inválido en .ds4map.json, usando por defecto')
+                    return DEFAULT_MAP
+                
+                print('Mapeo .ds4map.json cargado exitosamente')
+                return mapping
+        except json.JSONDecodeError as e:
+            print(f'Error parseando .ds4map.json: {e} - usando mapeo por defecto')
+            return DEFAULT_MAP
+        except Exception as e:
+            print(f'Error cargando .ds4map.json: {e} - usando mapeo por defecto')
             return DEFAULT_MAP
 
     async def start(self, emit: Callable[[dict], None]):
