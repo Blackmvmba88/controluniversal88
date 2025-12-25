@@ -50,8 +50,8 @@ function rateLimiter(options = {}) {
   const maxRequests = options.maxRequests || 100;
   
   return (req, res, next) => {
-    // Obtener IP del cliente (considerar proxies)
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    // Obtener IP del cliente (considerar proxies y usar API moderna)
+    const ip = req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown';
     const now = Date.now();
     
     // Obtener o inicializar contador para esta IP
@@ -98,7 +98,7 @@ function requestLogger() {
   return (req, res, next) => {
     const startTime = Date.now();
     const { method, url, ip } = req;
-    const clientIp = ip || req.connection.remoteAddress || 'unknown';
+    const clientIp = ip || req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown';
     
     // Interceptar el método res.json para capturar el status code
     const originalJson = res.json.bind(res);

@@ -172,12 +172,18 @@ function validateMappingBody() {
 
 /**
  * Sanitiza un label para prevenir inyecciones o caracteres problemáticos
+ * 
+ * Permite solo caracteres alfanuméricos, guiones y guiones bajos.
+ * Los guiones y guiones bajos se mantienen porque son comunes en
+ * identificadores de botones (ej: "dpad_up", "l2-btn").
+ * 
  * @param {string} label - Label a sanitizar
  * @returns {string} Label sanitizado
  */
 function sanitizeLabel(label) {
   if (typeof label !== 'string') return '';
   // Permitir solo caracteres alfanuméricos, guiones y guiones bajos
+  // Estos son seguros y comunes en identificadores de control
   return label.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 50);
 }
 
