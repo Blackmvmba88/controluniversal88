@@ -7,3 +7,6 @@ __pycache__/
 .ds4map.*
 .vscode/
 coverage/
+vendor/
+.bundle/
+Gemfile.lock

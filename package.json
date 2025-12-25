@@ -21,7 +21,9 @@
     "test:e2e": "npx playwright test --config=playwright.config.js",
     "test": "node tests/run-tests.js",
     "test:py": "python -m pytest -q",
-    "start:py": "python3 python/server.py"
+    "start:py": "python3 python/server.py",
+    "start:rb": "bundle exec ruby ruby/server.rb",
+    "start:rb:sim": "SIMULATE=1 bundle exec ruby ruby/server.rb"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",

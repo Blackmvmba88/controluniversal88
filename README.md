@@ -35,6 +35,13 @@ SIMULATE=1 python3 python/server.py
 # → Open http://localhost:8080
 ```
 
+**Ruby** (with ryby gem):
+```bash
+bundle install
+SIMULATE=1 ruby ruby/server.rb
+# → Open http://localhost:8080
+```
+
 **With real DualShock 4**: Plug in your controller via USB, drop `SIMULATE=1`, and run the same command. May require OS permissions (see [Troubleshooting](#troubleshooting)).
 
 ---
@@ -69,7 +76,7 @@ Diagnose controller hardware issues without disassembly. Detect anomalous patter
 - **Simulation mode**: Runs without hardware, generates realistic input patterns for dev/testing
 - **Basic button mapping**: Face buttons (Cross, Circle, Square, Triangle), triggers (L1, R1, L2, R2), shoulder buttons, D-pad, analog sticks
 - **WebSocket streaming**: Real-time JSON events (`{type: 'button', id: 'cross', value: 1}`)
-- **Two backend implementations**: Node.js (stable, fast) and Python/FastAPI (feature parity)
+- **Three backend implementations**: Node.js (stable, fast), Python/FastAPI (feature parity), and Ruby/Sinatra (with ryby gem)
 - **SVG-based WebUI**: Lightweight, responsive, keyboard-accessible
 - **Interactive auto-mapper**: Consensus-based button detection with automatic `.ds4map.json` generation
 - **CI/CD**: Automated tests run on every commit
@@ -126,6 +133,7 @@ Want to add support for a new controller, sensor, or output format? Here's the m
 ```
 server/         → Node.js backend (daemon, server, mapping tools)
 python/         → Python/FastAPI backend (parallel implementation)
+ruby/           → Ruby/Sinatra backend (with ryby gem support)
 web/            → WebUI clients (vanilla JS + React variants)
 tests/          → Unit tests, integration tests, simulated events
 docs/           → Architecture diagrams, guides
@@ -176,6 +184,11 @@ node server/collect_samples.js --label cross --count 3  # Collect labeled sample
 # Python Backend
 . .venv/bin/activate && python3 python/server.py  # Run Python server
 npm run test:py               # Run Python unit tests (pytest)
+
+# Ruby Backend
+bundle install                # Install Ruby dependencies
+bundle exec ruby ruby/server.rb  # Run Ruby server
+SIMULATE=1 bundle exec ruby ruby/server.rb  # Run with simulation
 ```
 
 ---
