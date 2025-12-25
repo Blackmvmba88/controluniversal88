@@ -430,67 +430,147 @@ class Daemon extends EventEmitter {
       }
     }
 
-    // If previous exists, emit diffs
+    /**
+     * Si no hay estado previo, emitir estado inicial
+     * Ser conservador: solo emitir ejes y botones presionados
+     */
     if (!this.prevState) {
-      // Emit initial state but be conservative: only emit axes and button presses that are true
       this.prevState = state;
-      Object.entries(state.buttons).forEach(([k,v]) => { if (v) this.emit('input', { type: 'button', id: k, value: 1 }); });
-      Object.entries(state.axes).forEach(([k,v]) => this.emit('input', { type: 'axis', id: k, value: Number(v.toFixed(2)) }));
+      
+      // Emitir solo botones que están presionados
+      Object.entries(state.buttons).forEach(([k, v]) => {
+        if (v) {
+          this.emit('input', { type: 'button', id: k, value: 1 });
+        }
+      });
+      
+      // Emitir valores de ejes
+      Object.entries(state.axes).forEach(([k, v]) => {
+        this.emit('input', { type: 'axis', id: k, value: Number(v.toFixed(2)) });
+      });
+      
       return;
     }
 
+    /**
+     * Modo MAP: Imprimir diferencias byte por byte para mapeo interactivo
+     * Útil para identificar qué bytes cambian al presionar botones
+     */
     if (MAP_MODE) {
-      // Print byte-wise diffs for interactive mapping
       const diffs = [];
-      for (let i=0;i<b.length;i++) if (b[i] !== this.prevState.raw[i]) diffs.push({ idx:i, before:this.prevState.raw[i], after:b[i] });
-      if (diffs.length) console.log('Report diff:', diffs);
-    }
-
-    // Buttons changes
-    for (const [name, pressed] of Object.entries(state.buttons)) {
-      const prev = !!this.prevState.buttons[name];
-      if (pressed !== prev) {
-        this.emit('input', { type: 'button', id: name, value: pressed ? 1 : 0 });
+      
+      for (let i = 0; i < b.length; i++) {
+        if (this.prevState.raw && b[i] !== this.prevState.raw[i]) {
+          diffs.push({
+            idx: i,
+            before: this.prevState.raw[i],
+            after: b[i]
+          });
+        }
+      }
+      
+      if (diffs.length) {
+        console.log('Diferencia de reporte:', diffs);
       }
     }
 
-    // D-Pad: emit as individual buttons
-    if (state.dpad !== this.prevState.dpad) {
-      // clear previous dpad bits
-      ['dpad_up','dpad_down','dpad_left','dpad_right'].forEach(id => this.emit('input', { type: 'button', id, value: 0 }));
-      if (state.dpad) state.dpad.split('|').forEach(id => this.emit('input', { type: 'button', id, value: 1 }));
+    /**
+     * Detectar y emitir cambios en botones
+     * Solo emitir cuando el estado cambia (presión o liberación)
+     */
+    for (const [name, pressed] of Object.entries(state.buttons)) {
+      const prev = this.prevState.buttons ? !!this.prevState.buttons[name] : false;
+      
+      if (pressed !== prev) {
+        this.emit('input', {
+          type: 'button',
+          id: name,
+          value: pressed ? 1 : 0
+        });
+      }
     }
 
-    // Axes thresholded updates
+    /**
+     * Emitir cambios del D-pad como botones individuales
+     * Primero limpiar direcciones previas, luego activar las nuevas
+     */
+    if (state.dpad !== this.prevState.dpad) {
+      // Limpiar botones previos del D-pad
+      ['dpad_up', 'dpad_down', 'dpad_left', 'dpad_right'].forEach(id => {
+        this.emit('input', { type: 'button', id, value: 0 });
+      });
+      
+      // Activar direcciones actuales
+      if (state.dpad) {
+        state.dpad.split('|').forEach(id => {
+          this.emit('input', { type: 'button', id, value: 1 });
+        });
+      }
+    }
+
+    /**
+     * Emitir cambios en ejes con umbral de cambio
+     * Solo emitir si el cambio supera el umbral (0.05) para reducir ruido
+     */
     for (const [name, v] of Object.entries(state.axes)) {
       let prevV = 0;
-      if (this.prevState && this.prevState.axes) prevV = this.prevState.axes[name] || 0;
+      if (this.prevState && this.prevState.axes) {
+        prevV = this.prevState.axes[name] || 0;
+      }
+      
+      // Umbral de 0.05 para filtrar ruido y micro-movimientos
       if (Math.abs(v - prevV) > 0.05) {
-        this.emit('input', { type: 'axis', id: name, value: Number(v.toFixed(2)) });
+        this.emit('input', {
+          type: 'axis',
+          id: name,
+          value: Number(v.toFixed(2))
+        });
       }
     }
 
-    // Heuristic: if axis mapping missing for a known axis name, try to infer most variable byte
-    const axesMapMissing = this.mapping && this.mapping.axes ? this.mapping.axes : {};
+    /**
+     * Heurística: si falta mapeo de eje pero el nombre es conocido,
+     * intentar inferir el byte más variable como candidato
+     */
+    const axesMapMissing = (this.mapping && this.mapping.axes) ? this.mapping.axes : {};
     for (const [name, idx] of Object.entries(axesMapMissing)) {
       const v = getByte(idx);
+      
+      // Si no hay valor válido y tenemos suficientes reportes recientes
       if (v === null && this._recent && this._recent.length >= 3) {
         const { findMostVariableByte } = require('../server/auto_map_core');
         const candidateIdx = findMostVariableByte(this._recent);
+        
         if (typeof candidateIdx === 'number') {
-          // emit approximate axis value
-          const candVal = ( (this._recent[this._recent.length-1][candidateIdx] || 0) - 128) / 127;
-          this.emit('input', { type: 'axis', id: name, value: Number(candVal.toFixed(2)) });
+          // Emitir valor aproximado del eje usando el byte candidato
+          const lastReport = this._recent[this._recent.length - 1];
+          const rawVal = (lastReport && lastReport[candidateIdx]) || 0;
+          const candVal = (rawVal - 128) / 127; // Normalizar como joystick
+          
+          this.emit('input', {
+            type: 'axis',
+            id: name,
+            value: Number(candVal.toFixed(2))
+          });
         }
       }
     }
 
+    // Actualizar estado previo para la próxima comparación
     this.prevState = state;
   }
 
-  // Status helpers used by UI/CLI
+  /**
+   * Obtiene el estado actual del daemon
+   * 
+   * Usado por la UI de calibración y herramientas CLI para
+   * obtener información sobre el mapeo actual y sensores detectados.
+   * 
+   * @returns {Object} {mapping, recentReports, sensors}
+   */
   getStatus() {
     const core = require('./auto_map_core');
+    
     return {
       mapping: this.mapping,
       recentReports: this._recent || [],
@@ -498,30 +578,107 @@ class Daemon extends EventEmitter {
     };
   }
 
+  /**
+   * Guarda un nuevo mapeo en disco
+   * 
+   * Crea una copia de respaldo del mapeo anterior antes de sobrescribir.
+   * Los respaldos se nombran con timestamp: .ds4map.json.bak.<timestamp>
+   * 
+   * @param {Object} mappingObj - Objeto de mapeo con estructura {axes, buttons, dpad}
+   */
   saveMapping(mappingObj) {
+    // Validar que el mapeo es un objeto válido
+    if (!mappingObj || typeof mappingObj !== 'object') {
+      logger.error('Intento de guardar mapeo inválido');
+      throw new Error('El mapeo debe ser un objeto válido');
+    }
+    
     const outPath = path.join(process.cwd(), '.ds4map.json');
-    try { if (fs.existsSync(outPath)) fs.copyFileSync(outPath, outPath + '.bak.' + Date.now()); } catch (e) {}
-    fs.writeFileSync(outPath, JSON.stringify(mappingObj, null, 2));
-    this.mapping = mappingObj;
+    
+    // Crear respaldo del archivo existente
+    try {
+      if (fs.existsSync(outPath)) {
+        const backupPath = `${outPath}.bak.${Date.now()}`;
+        fs.copyFileSync(outPath, backupPath);
+        logger.info('Respaldo creado:', backupPath);
+      }
+    } catch (e) {
+      logger.warn('No se pudo crear respaldo:', e.message);
+      // Continuar de todos modos - el respaldo no es crítico
+    }
+    
+    // Guardar nuevo mapeo
+    try {
+      fs.writeFileSync(outPath, JSON.stringify(mappingObj, null, 2), 'utf8');
+      this.mapping = mappingObj;
+      logger.info('Mapeo guardado exitosamente en', outPath);
+    } catch (e) {
+      logger.error('Error guardando mapeo:', e.message);
+      throw new Error(`No se pudo guardar el mapeo: ${e.message}`);
+    }
   }
 
+  /**
+   * Modo simulación: genera eventos de entrada sintéticos
+   * 
+   * Útil para desarrollo y pruebas sin hardware físico.
+   * Genera pulsaciones aleatorias de botones y movimiento de ejes.
+   * 
+   * @private
+   */
   _simulate() {
-    // Emit occasional button presses/releases for development
-    const buttons = Object.keys(this.mapping.buttons);
-    setInterval(() => {
+    // Obtener lista de botones disponibles del mapeo
+    const buttons = this.mapping && this.mapping.buttons 
+      ? Object.keys(this.mapping.buttons) 
+      : [];
+    
+    if (buttons.length === 0) {
+      logger.warn('No hay botones en el mapeo para simular');
+      return;
+    }
+    
+    /**
+     * Simular pulsaciones ocasionales de botones
+     * Selecciona un botón aleatorio, lo "presiona" y lo "libera" después de un retraso
+     */
+    const buttonInterval = setInterval(() => {
       const btn = buttons[Math.floor(Math.random() * buttons.length)];
+      
+      // Emitir presión de botón
       this.emit('input', { type: 'button', id: btn, value: 1 });
-      setTimeout(() => this.emit('input', { type: 'button', id: btn, value: 0 }), 200 + Math.random() * 600);
+      
+      // Emitir liberación después de 200-800ms
+      const releaseDelay = 200 + Math.random() * 600;
+      setTimeout(() => {
+        this.emit('input', { type: 'button', id: btn, value: 0 });
+      }, releaseDelay);
     }, 400);
+    
+    // Guardar referencia al intervalo para poder detenerlo si es necesario
+    this._simulateButtonInterval = buttonInterval;
 
-    // Simulate some axis movement occasionally
-    setInterval(() => {
-      this.emit('input', { type: 'axis', id: 'lstick_x', value: (Math.random() * 2 - 1).toFixed(2) });
-      this.emit('input', { type: 'axis', id: 'lstick_y', value: (Math.random() * 2 - 1).toFixed(2) });
+    /**
+     * Simular movimiento ocasional de los ejes del joystick izquierdo
+     * Genera valores aleatorios en el rango -1..1
+     */
+    const axisInterval = setInterval(() => {
+      const x = (Math.random() * 2 - 1).toFixed(2);
+      const y = (Math.random() * 2 - 1).toFixed(2);
+      
+      this.emit('input', { type: 'axis', id: 'lstick_x', value: parseFloat(x) });
+      this.emit('input', { type: 'axis', id: 'lstick_y', value: parseFloat(y) });
     }, 1000);
+    
+    // Guardar referencia al intervalo
+    this._simulateAxisInterval = axisInterval;
+    
+    logger.info('Modo simulación activo - generando eventos sintéticos');
   }
 }
 
+// Crear y exportar una instancia singleton del daemon
 const instance = new Daemon();
 module.exports = instance;
+
+// También exportar la clase para uso en tests
 module.exports.Daemon = Daemon;
