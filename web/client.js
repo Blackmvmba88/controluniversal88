@@ -5,7 +5,7 @@
  * en respuesta a eventos de entrada del control.
  * 
  * Funcionalidades principales:
- * - Conexión WebSocket automática
+ * - Conexión WebSocket automática con reconexión
  * - Actualización visual de botones presionados
  * - Visualización de ejes analógicos
  * - UI de calibración interactiva
@@ -20,21 +20,150 @@
    */
   const WS_URL = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host;
   
-  // Intentar establecer conexión WebSocket
-  let ws;
-  try {
-    ws = new WebSocket(WS_URL);
-  } catch (e) {
-    console.error('Error creando WebSocket:', e);
-    return; // Salir si no se puede crear WebSocket
+  // Estado de conexión WebSocket
+  let ws = null;
+  let reconnectAttempts = 0;
+  let reconnectTimer = null;
+  const MAX_RECONNECT_ATTEMPTS = 10;
+  const INITIAL_RECONNECT_DELAY = 1000; // 1 segundo
+  const MAX_RECONNECT_DELAY = 30000; // 30 segundos
+  
+  /**
+   * Calcula el delay de reconexión con backoff exponencial
+   * @returns {number} Delay en milisegundos
+   */
+  function getReconnectDelay() {
+    // Backoff exponencial: 1s, 2s, 4s, 8s, 16s, 30s (máximo)
+    const delay = Math.min(
+      INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts),
+      MAX_RECONNECT_DELAY
+    );
+    return delay;
   }
   
   /**
-   * Manejar eventos de conexión WebSocket
+   * Intenta reconectar al WebSocket
    */
-  ws.addEventListener('open', () => {
-    console.log('WebSocket conectado exitosamente');
-  });
+  function attemptReconnect() {
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.error('Máximo número de intentos de reconexión alcanzado');
+      showConnectionStatus('error', 'No se pudo conectar al servidor. Recarga la página.');
+      return;
+    }
+    
+    reconnectAttempts++;
+    const delay = getReconnectDelay();
+    
+    console.log(`Intentando reconexión ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} en ${delay}ms...`);
+    showConnectionStatus('warning', `Reconectando (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+    
+    reconnectTimer = setTimeout(() => {
+      connectWebSocket();
+    }, delay);
+  }
+  
+  /**
+   * Muestra estado de conexión en la UI
+   * @param {string} type - Tipo de estado: 'success', 'warning', 'error'
+   * @param {string} message - Mensaje a mostrar
+   */
+  function showConnectionStatus(type, message) {
+    // Buscar o crear elemento de estado
+    let statusEl = document.getElementById('connection-status');
+    if (!statusEl) {
+      statusEl = document.createElement('div');
+      statusEl.id = 'connection-status';
+      statusEl.style.cssText = 'position:fixed;top:10px;right:10px;padding:10px;border-radius:4px;z-index:9999;font-size:14px;';
+      document.body.appendChild(statusEl);
+    }
+    
+    // Configurar colores según tipo
+    const colors = {
+      success: { bg: '#4caf50', fg: '#fff' },
+      warning: { bg: '#ff9800', fg: '#fff' },
+      error: { bg: '#f44336', fg: '#fff' }
+    };
+    
+    const color = colors[type] || colors.warning;
+    statusEl.style.backgroundColor = color.bg;
+    statusEl.style.color = color.fg;
+    statusEl.textContent = message;
+    
+    // Auto-ocultar mensajes de éxito después de 3 segundos
+    if (type === 'success') {
+      setTimeout(() => {
+        if (statusEl && statusEl.parentNode) {
+          statusEl.style.display = 'none';
+        }
+      }, 3000);
+    } else {
+      statusEl.style.display = 'block';
+    }
+  }
+  
+  /**
+   * Conecta al WebSocket con manejo de reconexión
+   */
+  function connectWebSocket() {
+    // Limpiar conexión previa si existe
+    if (ws) {
+      try {
+        ws.close();
+      } catch (e) {
+        // Ignorar errores al cerrar
+      }
+      ws = null;
+    }
+    
+    // Intentar establecer conexión WebSocket
+    try {
+      ws = new WebSocket(WS_URL);
+    } catch (e) {
+      console.error('Error creando WebSocket:', e);
+      attemptReconnect();
+      return;
+    }
+    
+    /**
+     * Manejar eventos de conexión WebSocket
+     */
+    ws.addEventListener('open', () => {
+      console.log('WebSocket conectado exitosamente');
+      showConnectionStatus('success', 'Conectado al servidor');
+      reconnectAttempts = 0; // Resetear contador de intentos
+      
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+    });
+    
+    /**
+     * Manejar cierre de conexión
+     */
+    ws.addEventListener('close', (event) => {
+      console.log('WebSocket cerrado:', event.code, event.reason);
+      
+      // Solo reintentar si no fue cierre intencional
+      if (event.code !== 1000) { // 1000 = cierre normal
+        attemptReconnect();
+      }
+    });
+    
+    /**
+     * Manejar errores de conexión
+     */
+    ws.addEventListener('error', (error) => {
+      console.error('Error WebSocket:', error);
+      showConnectionStatus('error', 'Error de conexión');
+    });
+    
+    // Configurar manejador de mensajes
+    ws.addEventListener('message', handleMessage);
+  }
+  
+  // Iniciar conexión
+  connectWebSocket();
   
   /**
    * Caché de referencias DOM para evitar búsquedas repetidas
@@ -78,7 +207,7 @@
    * Procesa eventos de entrada (botones, ejes) y actualiza la UI en consecuencia.
    * También maneja mensajes de estado de calibración.
    */
-  ws.addEventListener('message', (m) => {
+  function handleMessage(m) {
     try {
       // Validar que el mensaje tiene datos
       if (!m || !m.data) {
@@ -173,22 +302,8 @@
     } catch (err) {
       console.error('Error procesando mensaje WebSocket:', err);
     }
-  });
+  } // Fin de handleMessage
   
-  /**
-   * Manejar cierre de conexión WebSocket
-   */
-  ws.addEventListener('close', (event) => {
-    console.log('WebSocket cerrado:', event.code, event.reason);
-  });
-  
-  /**
-   * Manejar errores de WebSocket
-   */
-  ws.addEventListener('error', (error) => {
-    console.error('Error de WebSocket:', error);
-  });
-
   /**
    * Textos de UI (placeholder amigable para i18n/internacionalización)
    * Centraliza todos los strings de la interfaz para facilitar traducción
