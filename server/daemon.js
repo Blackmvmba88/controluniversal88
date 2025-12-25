@@ -110,6 +110,31 @@ class Daemon extends EventEmitter {
     this.prevState = null;
     this._device = null;
     this._recent = []; // Reportes recientes para detección heurística
+    
+    // Caché para optimizar búsquedas repetidas en mapeo
+    this._axesCache = null;
+    this._buttonsCache = null;
+    this._dpadCache = null;
+    
+    // Invalidar cachés cuando el mapeo cambia
+    this._updateCaches();
+  }
+
+  /**
+   * Actualiza los cachés internos desde el mapeo actual
+   * Llamar después de cambiar this.mapping
+   * @private
+   */
+  _updateCaches() {
+    this._axesCache = (this.mapping && this.mapping.axes && typeof this.mapping.axes === 'object') 
+      ? this.mapping.axes 
+      : {};
+    this._buttonsCache = (this.mapping && this.mapping.buttons && typeof this.mapping.buttons === 'object')
+      ? this.mapping.buttons
+      : {};
+    this._dpadCache = (this.mapping && this.mapping.dpad && typeof this.mapping.dpad === 'object')
+      ? this.mapping.dpad
+      : null;
   }
 
   /**
@@ -315,11 +340,8 @@ class Daemon extends EventEmitter {
      * Los ejes incluyen joysticks (X/Y) y gatillos analógicos (L2/R2)
      */
     state.axes = {};
-    const axesMap = (this.mapping && this.mapping.axes && typeof this.mapping.axes === 'object') 
-      ? this.mapping.axes 
-      : {};
-      
-    for (const [name, idx] of Object.entries(axesMap)) {
+    // Usar caché en lugar de validar y acceder cada vez
+    for (const [name, idx] of Object.entries(this._axesCache)) {
       const v = getByte(idx);
       
       if (typeof v === 'number') {
@@ -341,8 +363,8 @@ class Daemon extends EventEmitter {
      * 4=abajo, 5=abajo-izquierda, 6=izquierda, 7=arriba-izquierda
      */
     state.dpad = null;
-    if (this.mapping && this.mapping.dpad && typeof this.mapping.dpad === 'object') {
-      const dCfg = this.mapping.dpad;
+    if (this._dpadCache) {
+      const dCfg = this._dpadCache;
       const rawByte = getByte(dCfg.byte);
       
       if (rawByte !== null && typeof dCfg.mask === 'number') {
@@ -371,11 +393,8 @@ class Daemon extends EventEmitter {
      * Cada botón se mapea a un byte específico y una máscara de bit
      */
     state.buttons = {};
-    const btnMap = (this.mapping && this.mapping.buttons && typeof this.mapping.buttons === 'object')
-      ? this.mapping.buttons
-      : {};
-      
-    for (const [name, pair] of Object.entries(btnMap)) {
+    // Usar caché en lugar de acceder al mapeo cada vez
+    for (const [name, pair] of Object.entries(this._buttonsCache)) {
       // Validar que el mapeo del botón tiene el formato correcto
       if (!Array.isArray(pair) || pair.length < 2) {
         state.buttons[name] = false;
@@ -534,8 +553,7 @@ class Daemon extends EventEmitter {
      * Heurística: si falta mapeo de eje pero el nombre es conocido,
      * intentar inferir el byte más variable como candidato
      */
-    const axesMapMissing = (this.mapping && this.mapping.axes) ? this.mapping.axes : {};
-    for (const [name, idx] of Object.entries(axesMapMissing)) {
+    for (const [name, idx] of Object.entries(this._axesCache)) {
       const v = getByte(idx);
       
       // Si no hay valor válido y tenemos suficientes reportes recientes
@@ -613,6 +631,8 @@ class Daemon extends EventEmitter {
     try {
       fs.writeFileSync(outPath, JSON.stringify(mappingObj, null, 2), 'utf8');
       this.mapping = mappingObj;
+      // Actualizar cachés con el nuevo mapeo
+      this._updateCaches();
       logger.info('Mapeo guardado exitosamente en', outPath);
     } catch (e) {
       logger.error('Error guardando mapeo:', e.message);
