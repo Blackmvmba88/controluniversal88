@@ -1,61 +1,217 @@
+/**
+ * Cliente WebSocket para monitor de control DualShock 4
+ * 
+ * Establece conexión WebSocket con el servidor y actualiza la UI
+ * en respuesta a eventos de entrada del control.
+ * 
+ * Funcionalidades principales:
+ * - Conexión WebSocket automática
+ * - Actualización visual de botones presionados
+ * - Visualización de ejes analógicos
+ * - UI de calibración interactiva
+ * - Mapeo guiado paso a paso
+ * 
+ * @module client
+ */
 (function(){
+  /**
+   * Construir URL de WebSocket basada en el protocolo actual
+   * Si la página se carga con HTTPS, usar WSS; sino usar WS
+   */
   const WS_URL = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host;
-  const ws = new WebSocket(WS_URL);
-  ws.addEventListener('open', () => console.log('WS connected'));
-  // Cache DOM references to avoid repeated lookups
+  
+  // Intentar establecer conexión WebSocket
+  let ws;
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch (e) {
+    console.error('Error creando WebSocket:', e);
+    return; // Salir si no se puede crear WebSocket
+  }
+  
+  /**
+   * Manejar eventos de conexión WebSocket
+   */
+  ws.addEventListener('open', () => {
+    console.log('WebSocket conectado exitosamente');
+  });
+  
+  /**
+   * Caché de referencias DOM para evitar búsquedas repetidas
+   * Mejora el rendimiento al mantener referencias a elementos frecuentemente accedidos
+   */
   const elCache = new Map();
-  function getEl(id){
-    if (!id) return null;
-    if (elCache.has(id)) return elCache.get(id);
-    const e = document.getElementById(id);
-    elCache.set(id, e);
-    return e;
+  
+  /**
+   * Obtiene un elemento del DOM con caché
+   * 
+   * @param {string} id - ID del elemento a buscar
+   * @returns {HTMLElement|null} Elemento encontrado o null
+   */
+  function getEl(id) {
+    // Validar que se proporcionó un ID
+    if (!id || typeof id !== 'string') {
+      return null;
+    }
+    
+    // Retornar desde caché si existe
+    if (elCache.has(id)) {
+      return elCache.get(id);
+    }
+    
+    // Buscar en DOM y almacenar en caché
+    try {
+      const e = document.getElementById(id);
+      if (e) {
+        elCache.set(id, e);
+      }
+      return e;
+    } catch (e) {
+      console.error('Error buscando elemento:', id, e);
+      return null;
+    }
   }
 
+  /**
+   * Manejar mensajes entrantes del WebSocket
+   * 
+   * Procesa eventos de entrada (botones, ejes) y actualiza la UI accordingly.
+   * También maneja mensajes de estado de calibración.
+   */
   ws.addEventListener('message', (m) => {
     try {
-      const msg = JSON.parse(m.data);
-      if (!msg || typeof msg.type !== 'string') return;
+      // Validar que el mensaje tiene datos
+      if (!m || !m.data) {
+        console.warn('Mensaje WebSocket sin datos');
+        return;
+      }
+      
+      // Parsear JSON del mensaje
+      let msg;
+      try {
+        msg = JSON.parse(m.data);
+      } catch (parseErr) {
+        console.error('Error parseando mensaje JSON:', parseErr);
+        return;
+      }
+      
+      // Validar estructura básica del mensaje
+      if (!msg || typeof msg.type !== 'string') {
+        console.warn('Mensaje con estructura inválida:', msg);
+        return;
+      }
+      
+      /**
+       * Manejar evento de botón
+       * Añade/remueve clase 'active' al elemento SVG correspondiente
+       */
       if (msg.type === 'button') {
-        if (typeof msg.id !== 'string') return;
+        if (typeof msg.id !== 'string') {
+          console.warn('Mensaje de botón sin ID válido');
+          return;
+        }
+        
         const el = getEl(msg.id);
-        if (!el) return;
+        if (!el) {
+          // No registrar advertencia si el elemento no existe - puede ser intencional
+          return;
+        }
+        
+        // Actualizar clase CSS basado en el valor (1=presionado, 0=liberado)
         if (msg.value === 1) {
           el.classList.add('active');
         } else {
           el.classList.remove('active');
         }
-      } else if (msg.type === 'axis') {
-        // Update simple axis display
+      } 
+      /**
+       * Manejar evento de eje analógico
+       * Actualiza elemento de texto con valores de ejes
+       */
+      else if (msg.type === 'axis') {
         const axisEl = getEl('axis-display');
         if (axisEl) {
-          const prev = axisEl.innerText;
-          const text = Object.keys(msg).filter(k=>k!=='type').map(k=>`${k}: ${msg[k]}`).join('  ');
-          if (prev !== text) axisEl.innerText = text;
+          // Construir texto con todos los valores del eje (excepto 'type')
+          const text = Object.keys(msg)
+            .filter(k => k !== 'type')
+            .map(k => `${k}: ${msg[k]}`)
+            .join('  ');
+          
+          // Solo actualizar si el texto cambió (evitar reflows innecesarios)
+          if (axisEl.innerText !== text) {
+            axisEl.innerText = text;
+          }
         }
-      } else if (msg.type === 'collect_status') {
-        // show status in calibration overlay
+      } 
+      /**
+       * Manejar estado de calibración
+       * Actualiza overlay de calibración con progreso del job
+       */
+      else if (msg.type === 'collect_status') {
         const st = getEl('cal-sensors');
         const log = getEl('cal-log');
+        
         try {
-          if (st) st.innerText = msg.job.status + ' (' + (msg.job.label || '') + ')';
-          if (log) { const last = (msg.job.progress || []).slice(-5).map(p => JSON.stringify(p)).join('\n'); log.innerText = last; }
-        } catch(e){}
+          if (st && msg.job) {
+            const status = msg.job.status || 'unknown';
+            const label = msg.job.label || '';
+            st.innerText = `${status} (${label})`;
+          }
+          
+          if (log && msg.job && msg.job.progress) {
+            // Mostrar las últimas 5 entradas de progreso
+            const last = msg.job.progress
+              .slice(-5)
+              .map(p => JSON.stringify(p))
+              .join('\n');
+            log.innerText = last;
+          }
+        } catch (e) {
+          console.error('Error actualizando estado de calibración:', e);
+        }
       }
-    } catch (err) { console.error('WS parse', err); }
+    } catch (err) {
+      console.error('Error procesando mensaje WebSocket:', err);
+    }
   });
-  ws.addEventListener('close', () => console.log('WS closed'));
+  
+  /**
+   * Manejar cierre de conexión WebSocket
+   */
+  ws.addEventListener('close', (event) => {
+    console.log('WebSocket cerrado:', event.code, event.reason);
+  });
+  
+  /**
+   * Manejar errores de WebSocket
+   */
+  ws.addEventListener('error', (error) => {
+    console.error('Error de WebSocket:', error);
+  });
 
-  // UI strings (i18n-friendly placeholder)
+  /**
+   * Textos de UI (placeholder amigable para i18n/internacionalización)
+   * Centraliza todos los strings de la interfaz para facilitar traducción
+   */
   const STRINGS = {
-    guidedTitle: (label) => `Guided — ${label}`,
-    pressNow: (label) => `Press the '${label}' control now. Waiting for sampling...`,
-    waiting: 'Waiting for data...',
-    modalCloseMsg: 'Close'
+    guidedTitle: (label) => `Guiado — ${label}`,
+    pressNow: (label) => `Presiona el control '${label}' ahora. Esperando muestreo...`,
+    waiting: 'Esperando datos...',
+    modalCloseMsg: 'Cerrar'
   };
 
-  // Calibration UI controls
-  function $(id){ return document.getElementById(id); }
+  /**
+   * Función auxiliar para obtener elemento por ID
+   * Versión corta para uso interno en configuración de calibración
+   * 
+   * @param {string} id - ID del elemento
+   * @returns {HTMLElement|null} Elemento o null
+   */
+  function $(id) {
+    return document.getElementById(id);
+  }
+  
+  // Obtener referencias a controles de calibración
   const btnStart = $('cal-start');
   const btnAuto = $('cal-auto');
   const inLabel = $('cal-label');
