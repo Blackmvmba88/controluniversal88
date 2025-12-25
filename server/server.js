@@ -6,6 +6,7 @@ const daemon = require('./daemon');
 const logger = require('./logger');
 const core = require('./auto_map_core');
 const validation = require('./validation');
+const middleware = require('./middleware');
 const fs = require('fs');
 
 const app = express();
@@ -15,6 +16,8 @@ const PORT = process.env.PORT || 8080;
 
 if (process.env.LOG_LEVEL) logger.setLevel(process.env.LOG_LEVEL);
 
+// Aplicar middlewares globales
+app.use(middleware.requestLogger());
 app.use(express.static(path.join(__dirname, '..', 'web')));
 app.use('/docs', express.static(path.join(__dirname, '..', 'docs')));
 
@@ -47,7 +50,13 @@ app.post('/api/save-map', express.json(), validation.validateMappingBody(), (req
 const collectLib = require('./collect_lib');
 let currentJob = null;
 
-app.post('/api/collect/start', express.json(), async (req, res) => {
+// Aplicar rate limiting a endpoints de colección (más estricto)
+const collectRateLimit = middleware.rateLimiter({ 
+  windowMs: 60000, // 1 minuto
+  maxRequests: 20   // Máximo 20 requests por minuto
+});
+
+app.post('/api/collect/start', express.json(), collectRateLimit, async (req, res) => {
   // Validar y sanitizar parámetros
   const paramValidation = validation.validateAndSanitizeCollectParams(req.body || {});
   if (!paramValidation.valid) {
@@ -79,7 +88,7 @@ app.post('/api/collect/start', express.json(), async (req, res) => {
 
 app.get('/api/collect/status', (req, res) => { res.json(currentJob || { status: 'idle' }); });
 
-app.post('/api/collect/auto', express.json(), async (req, res) => {
+app.post('/api/collect/auto', express.json(), collectRateLimit, async (req, res) => {
   const buttons = ['square','cross','circle','triangle','l1','r1','l2_btn','r2_btn','share','options','lstick','rstick','ps','dpad_up','dpad_right','dpad_down','dpad_left'];
   
   // Validar parámetros
@@ -205,5 +214,8 @@ daemon.on('input', (ev) => {
 });
 
 server.listen(PORT, () => logger.info(`Server listening on http://localhost:${PORT}`));
+
+// Aplicar middleware de manejo de errores (debe ir al final)
+app.use(middleware.errorHandler());
 
 process.on('SIGINT', () => process.exit());
