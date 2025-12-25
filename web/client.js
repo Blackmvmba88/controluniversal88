@@ -2,30 +2,46 @@
   const WS_URL = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host;
   const ws = new WebSocket(WS_URL);
   ws.addEventListener('open', () => console.log('WS connected'));
+  // Cache DOM references to avoid repeated lookups
+  const elCache = new Map();
+  function getEl(id){
+    if (!id) return null;
+    if (elCache.has(id)) return elCache.get(id);
+    const e = document.getElementById(id);
+    elCache.set(id, e);
+    return e;
+  }
+
   ws.addEventListener('message', (m) => {
     try {
       const msg = JSON.parse(m.data);
       if (!msg || typeof msg.type !== 'string') return;
       if (msg.type === 'button') {
         if (typeof msg.id !== 'string') return;
-        const el = document.getElementById(msg.id);
+        const el = getEl(msg.id);
         if (!el) return;
         if (msg.value === 1) {
           el.classList.add('active');
         } else {
           el.classList.remove('active');
         }
+      } else if (msg.type === 'axis') {
+        // Update simple axis display
+        const axisEl = getEl('axis-display');
+        if (axisEl) {
+          const prev = axisEl.innerText;
+          const text = Object.keys(msg).filter(k=>k!=='type').map(k=>`${k}: ${msg[k]}`).join('  ');
+          if (prev !== text) axisEl.innerText = text;
+        }
       } else if (msg.type === 'collect_status') {
         // show status in calibration overlay
-        const st = document.getElementById('cal-sensors');
-        const log = document.getElementById('cal-log');
+        const st = getEl('cal-sensors');
+        const log = getEl('cal-log');
         try {
-          st.innerText = msg.job.status + ' (' + (msg.job.label || '') + ')';
-          const last = msg.job.progress.slice(-5).map(p => JSON.stringify(p)).join('\n');
-          log.innerText = last;
+          if (st) st.innerText = msg.job.status + ' (' + (msg.job.label || '') + ')';
+          if (log) { const last = (msg.job.progress || []).slice(-5).map(p => JSON.stringify(p)).join('\n'); log.innerText = last; }
         } catch(e){}
       }
-      // axis handling could update transforms or indicators
     } catch (err) { console.error('WS parse', err); }
   });
   ws.addEventListener('close', () => console.log('WS closed'));

@@ -66,13 +66,14 @@ class Daemon extends EventEmitter {
     try {
       const devices = HID.devices();
       logger.info('HID devices found:', devices.length);
-      const ds = devices.find(d => /Sony/i.test(d.manufacturer || '') || /Wireless Controller/i.test(d.product || ''));
+      // Broad vendor/product detection: support Sony (DualShock) and common third-party controllers (PowerA / XBX / Xbox / generic Controller)
+      const ds = devices.find(d => /Sony|PlayStation|Wireless Controller|PowerA|XBX|Xbox|Controller/i.test((d.manufacturer || '') + ' ' + (d.product || '')));
       if (!ds) {
-        logger.warn('No DualShock-like device found; falling back to simulation.');
+        logger.warn('No supported controller found; falling back to simulation.');
         this._simulate();
         return;
       }
-      logger.info('Attempting to open device:', ds);
+      logger.info('Attempting to open controller device:', ds);
       const device = new HID.HID(ds.path);
       this._device = device;
       device.on('data', buf => {
