@@ -12,6 +12,12 @@ Development setup
 2. (Optional) Install Playwright browsers for E2E tests:
    - npx playwright install --with-deps
 
+Husky & pre-commit hooks
+- To enable Husky pre-commit hooks run once after cloning:
+  - `npm run prepare`
+- The hooks will run `lint-staged` which validates only staged `.json` files for correctness. This reduces the cost of pre-commit checks while preventing accidental JSON syntax regressions.
+- If you don't want hooks locally, skip `npm run prepare` (hooks are opt-in).
+
 Running tests
 - Unit tests (Node.js):
   - npm test
