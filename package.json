@@ -22,6 +22,8 @@
     "test:all": "npm test && npx playwright test --config=playwright.config.js",
     "make:bookmarklet": "node scripts/make-bookmarklet.js",
     "start:tunnel": "node scripts/start-tunnel.js",
+    "check:json": "node scripts/check-json.js",
+    "prepare": "husky install",
     "test": "node tests/run-tests.js",
     "test:py": "python -m pytest -q",
     "start:py": "python3 python/server.py"
@@ -36,7 +38,8 @@
     "terser": "^5.44.1",
     "usb": "^2.16.0",
     "localtunnel": "^2.0.0",
-    "minimist": "^1.2.8"
+    "minimist": "^1.2.8",
+    "husky": "^8.0.0"
   },
   "dependencies": {
     "express": "^4.18.2",
