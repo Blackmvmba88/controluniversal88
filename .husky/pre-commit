@@ -1,5 +1,5 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-# Quick JSON syntax check before commits
-npm run check:json || exit 1
+# Run lint-staged to only validate staged JSON files (faster)
+npx --no-install lint-staged || exit 1
