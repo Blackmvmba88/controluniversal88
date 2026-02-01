@@ -125,8 +125,27 @@ class Daemon:
             try:
                 v = b[byteIdx]
                 state['buttons'][name] = bool(v & mask)
+                # Heuristic: mapped byte existed but did not indicate a press (both prev and cur are zero)
+                if not state['buttons'][name] and self.prev_state and getattr(self.prev_state, 'raw', None):
+                    prev_raw = getattr(self, '_recent', [])[-2] if len(getattr(self, '_recent', [])) >= 2 else None
+                    cur_raw = getattr(self, '_recent', [])[-1] if len(getattr(self, '_recent', [])) >= 1 else None
+                    try:
+                        if prev_raw is not None and cur_raw is not None:
+                            prev_mapped_val = prev_raw[byteIdx] if byteIdx < len(prev_raw) else 0
+                            if prev_mapped_val == v and v == 0:
+                                from python import auto_map
+                                single = auto_map.find_single_bit_change(prev_raw, cur_raw)
+                                if single and (single['xor'] & (mask or 0)) != 0:
+                                    state['buttons'][name] = True
+                    except Exception:
+                        pass
             except Exception:
                 state['buttons'][name] = False
+
+        # maintain recent raw reports for heuristics
+        self._recent = getattr(self, '_recent', [])
+        self._recent.append(state['raw'])
+        if len(self._recent) > 8: self._recent.pop(0)
 
         if self.prev_state is None:
             # initial state
@@ -136,11 +155,6 @@ class Daemon:
             for k, v in state['axes'].items():
                 emit({'type':'axis','id':k,'value':v})
             return
-
-        # maintain recent raw reports for heuristics
-        self._recent = getattr(self, '_recent', [])
-        self._recent.append(state['raw'])
-        if len(self._recent) > 8: self._recent.pop(0)
 
         if MAP_MODE:
             diffs = [(i, self.prev_state['raw'][i], b[i]) for i in range(min(len(b), len(self.prev_state['raw']))) if b[i] != self.prev_state['raw'][i]]
@@ -167,9 +181,19 @@ class Daemon:
                     if xor and (xor & (xor - 1)) == 0:
                         # find which button mapping referenced missing byte and emit a guessed press for it
                         for name, pair in (self.mapping.get('buttons') or {}).items():
-                            if not pair or pair[0] >= len(cur_raw):
-                                # emit guessed event
-                                emit({'type':'button','id':name,'value':1 if b & xor else 0})
+                            if not pair:
+                                continue
+                            try:
+                                byteIdx, mask = pair
+                                prev_val = prev_raw[byteIdx] if byteIdx < len(prev_raw) else 0
+                                cur_val = cur_raw[byteIdx] if byteIdx < len(cur_raw) else 0
+                                # if the mapped byte did not change (both zero), and the single-bit xor overlaps the mask, emit a guessed event
+                                if prev_val == cur_val == 0 and (xor & (mask or 0)) != 0:
+                                    emit({'type':'button','id':name,'value':1 if b & xor else 0})
+                            except Exception:
+                                # fallback for unexpected mapping formats: if mapping pointed outside buffer, emit guess
+                                if not pair or pair[0] >= len(cur_raw):
+                                    emit({'type':'button','id':name,'value':1 if b & xor else 0})
         except Exception:
             pass
 

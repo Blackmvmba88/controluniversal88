@@ -43,6 +43,110 @@ def _wait_diff(h, state, timeout=8.0):
     raise TimeoutError()
 
 
+# Non-interactive helpers (ported from server/auto_map_core.js)
+
+def _choose_candidate_from_diffs(diffs):
+    if not diffs:
+        return None
+    # prefer diffs whose xor is a single bit
+    for d in diffs:
+        xor = d.get('xor', 0)
+        if xor and (xor & (xor - 1)) == 0:
+            return {'idx': d['idx'], 'xor': xor}
+    # else return the diff with smallest number of bits set
+    def popcount(x):
+        return bin(x).count('1')
+    best = diffs[0]
+    best_count = popcount(best.get('xor', 0))
+    for d in diffs[1:]:
+        c = popcount(d.get('xor', 0))
+        if c < best_count:
+            best = d
+            best_count = c
+    return {'idx': best['idx'], 'xor': best['xor']}
+
+
+def infer_button_mappings(observed_diffs_by_button):
+    mapping = {}
+    for btn, attempts in observed_diffs_by_button.items():
+        candidates = []
+        for diffs in attempts:
+            for d in diffs:
+                candidates.append(d)
+        choice = _choose_candidate_from_diffs(candidates)
+        if choice:
+            mapping[btn] = [choice['idx'], choice['xor']]
+    return mapping
+
+
+def infer_dpad_byte(dpad_diffs_array):
+    counts = {}
+    for diffs in dpad_diffs_array:
+        for d in diffs:
+            counts[d['idx']] = counts.get(d['idx'], 0) + 1
+    if not counts:
+        return None
+    best_idx = max(counts.items(), key=lambda kv: kv[1])[0]
+    return {'byte': best_idx, 'mask': 0x0f}
+
+
+def find_single_bit_change(prev, cur):
+    diffs = _print_diff(prev, cur)
+    for d in diffs:
+        xor = d.get('xor', 0)
+        if xor and (xor & (xor - 1)) == 0:
+            return {'idx': d['idx'], 'xor': xor}
+    return None
+
+
+def find_most_variable_byte(reports):
+    if not reports:
+        return None
+    length = max(len(r) for r in reports)
+    variances = [0] * length
+    for i in range(length):
+        vals = [(r[i] if i < len(r) else 0) for r in reports]
+        mean = sum(vals) / len(vals)
+        varsum = sum((v - mean) ** 2 for v in vals) / len(vals)
+        variances[i] = varsum
+    best_idx = 0
+    best_v = variances[0]
+    for i in range(1, len(variances)):
+        if variances[i] > best_v:
+            best_v = variances[i]
+            best_idx = i
+    return best_idx
+
+
+def detect_sensor_candidates(reports):
+    if not reports:
+        return {'batteryCandidates': [], 'motionCandidates': []}
+    length = max(len(r) for r in reports)
+    variances = [0] * length
+    means = [0] * length
+    for i in range(length):
+        vals = [(r[i] if i < len(r) else 0) for r in reports]
+        mean = sum(vals) / len(vals)
+        varsum = sum((v - mean) ** 2 for v in vals) / len(vals)
+        variances[i] = varsum
+        means[i] = mean
+    battery_candidates = [i for i in range(length) if variances[i] < 4 and means[i] > 0]
+    motion_candidates = [i for i in range(length) if variances[i] > 20]
+    return {'batteryCandidates': battery_candidates, 'motionCandidates': motion_candidates}
+
+
+def infer_mappings_from_labeled_reports(labeled_pairs):
+    # labeled_pairs: list of (label, before, after)
+    per_label = {}
+    for p in labeled_pairs:
+        label, before, after = p
+        diffs = _print_diff(before, after)
+        if label not in per_label:
+            per_label[label] = []
+        per_label[label].append(diffs)
+    return infer_button_mappings(per_label)
+
+
 def main(interactive=True):
     """Run the interactive mapping flow. If no DS4 device is found, do nothing and return.
     This function is safe to call from tests or CI without causing an import-time exit.
