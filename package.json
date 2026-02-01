@@ -19,14 +19,24 @@
     "build:client": "npx terser web/client.js -c -m -o web/client.min.js --source-map",
     "smoke:extended": "node tests/ws-extended.test.js",
     "test:e2e": "npx playwright test --config=playwright.config.js",
+    "test:all": "npm test && npx playwright test --config=playwright.config.js",
+    "make:bookmarklet": "node scripts/make-bookmarklet.js",
+    "start:tunnel": "node scripts/start-tunnel.js",
     "test": "node tests/run-tests.js",
     "test:py": "python -m pytest -q",
     "start:py": "python3 python/server.py"
   },
+  "config": {
+    "bookmarklet_default_ttl_hours": 4,
+    "artifact_default_retention_hours": 48
+  },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "playwright": "^1.57.0",
-    "terser": "^5.44.1"
+    "terser": "^5.44.1",
+    "usb": "^2.16.0",
+    "localtunnel": "^2.0.0",
+    "minimist": "^1.2.8"
   },
   "dependencies": {
     "express": "^4.18.2",
