@@ -4,15 +4,15 @@ If you'd prefer to send sensitive details encrypted, we can publish an ASCII-arm
 
 How to use (examples):
 
-1) Import the maintainer public key (once published):
+1. Import the maintainer public key (once published):
 
    gpg --import maintainer-public-key.asc
 
-2) Encrypt a report file for the maintainer:
+2. Encrypt a report file for the maintainer:
 
    gpg --encrypt --armor -r "security@controluniversal.dev" --output report.asc -- report.txt
 
-3) Send `report.asc` by email to `security@controluniversal.dev` (or attach it to the GitHub security issue after contacting maintainers).
+3. Send `report.asc` by email to `security@controluniversal.dev` (or attach it to the GitHub security issue after contacting maintainers).
 
 PGP key placeholder
 
@@ -43,6 +43,7 @@ Generating a PGP key (example steps)
    gpg --armor --export security@controluniversal.dev > maintainer-public-key.asc
 
    # or export by key ID
+
    gpg --armor --export 0xYOURKEYID > maintainer-public-key.asc
 
 4. To encrypt a report for the maintainer:

@@ -16,13 +16,13 @@ function testButtonPressRelease() {
   // initial state all zero
   d._handleBuffer(makeBuffer(12, {}));
   // press cross (byte 5 mask 0x20)
-  d._handleBuffer(makeBuffer(12, {5: 0x20}));
-  assert(events.some(e => e.type === 'button' && e.id === 'cross' && e.value === 1));
+  d._handleBuffer(makeBuffer(12, { 5: 0x20 }));
+  assert(events.some((e) => e.type === 'button' && e.id === 'cross' && e.value === 1));
 
   // release cross
   events.length = 0;
-  d._handleBuffer(makeBuffer(12, {5: 0x00}));
-  assert(events.some(e => e.type === 'button' && e.id === 'cross' && e.value === 0));
+  d._handleBuffer(makeBuffer(12, { 5: 0x00 }));
+  assert(events.some((e) => e.type === 'button' && e.id === 'cross' && e.value === 0));
 }
 
 function testAxisThreshold() {
@@ -31,11 +31,11 @@ function testAxisThreshold() {
   d.on('input', (m) => events.push(m));
 
   // initial center
-  d._handleBuffer(makeBuffer(12, {1:128}));
+  d._handleBuffer(makeBuffer(12, { 1: 128 }));
   events.length = 0;
   // move to right significantly
-  d._handleBuffer(makeBuffer(12, {1:200}));
-  assert(events.some(e => e.type === 'axis' && e.id === 'lstick_x'));
+  d._handleBuffer(makeBuffer(12, { 1: 200 }));
+  assert(events.some((e) => e.type === 'axis' && e.id === 'lstick_x'));
 }
 
 module.exports = { testButtonPressRelease, testAxisThreshold };

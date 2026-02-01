@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Flight Simulator Stub</title>
+    <style>
+      body {
+        font-family: system-ui, Arial;
+        background: #081018;
+        color: #fff;
+        padding: 20px;
+      }
+      .log {
+        background: #011;
+        padding: 10px;
+        border-radius: 8px;
+        min-height: 80px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Flight Simulator Stub</h1>
+    <p>
+      This page listens for synthetic keyboard events (F18) and custom axis events.<br />Open the
+      bookmarklet or connect to the server WS to receive events.
+    </p>
+    <div class="log" id="log">no events yet</div>
+
+    <script>
+      const log = document.getElementById('log');
+      function append(s) {
+        log.innerText = new Date().toISOString() + ' — ' + s + '\n' + log.innerText;
+      }
+      window.addEventListener('keydown', (e) => {
+        append('keydown key=' + e.key + ' code=' + e.code);
+        window.lastKey = e.key;
+      });
+      window.addEventListener('keyup', (e) => {
+        append('keyup key=' + e.key + ' code=' + e.code);
+        window.lastKeyUp = e.key;
+      });
+      window.addEventListener('controller:axis', (ev) => {
+        append('axis ' + JSON.stringify(ev.detail));
+        window.lastAxis = ev.detail;
+      });
+    </script>
+  </body>
+</html>

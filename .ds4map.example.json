@@ -1,9 +1,19 @@
 {
   "axes": { "lstick_x": 1, "lstick_y": 2, "rstick_x": 3, "rstick_y": 4, "l2": 8, "r2": 9 },
   "buttons": {
-    "square": [5, 16], "cross": [5, 32], "circle": [5, 64], "triangle": [5, 128],
-    "l1": [6, 1], "r1": [6, 2], "l2_btn": [6,4], "r2_btn": [6,8],
-    "share": [6,16], "options": [6,32], "lstick": [6,64], "rstick": [6,128], "ps": [7,1]
+    "square": [5, 16],
+    "cross": [5, 32],
+    "circle": [5, 64],
+    "triangle": [5, 128],
+    "l1": [6, 1],
+    "r1": [6, 2],
+    "l2_btn": [6, 4],
+    "r2_btn": [6, 8],
+    "share": [6, 16],
+    "options": [6, 32],
+    "lstick": [6, 64],
+    "rstick": [6, 128],
+    "ps": [7, 1]
   },
   "dpad": { "byte": 5, "mask": 15 }
 }

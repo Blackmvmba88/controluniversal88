@@ -1,0 +1,30 @@
+name: Clean expired bookmarklets
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # every 6 hours
+  workflow_dispatch: {}
+
+jobs:
+  clean-dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install deps
+        run: npm ci
+      - name: Run clean-dist
+        run: node scripts/clean-dist.js
+      - name: 'Optional: Show dist'
+        run: ls -la dist || true
+      - name: Commit deletions
+        # This job will commit deletions back to the repo to ensure dist stays clean
+        run: |
+          git config user.email "actions@github.com"; git config user.name "github-actions";
+          git add -A dist || true; 
+          if git diff --staged --quiet; then echo 'no changes'; else git commit -m 'chore: clean expired bookmarklets' && git push; fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,118 +1,160 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>DualShock 4 Monitor — Lightweight UI</title>
-  <style>
-    body { font-family: system-ui, Arial; padding: 20px; }
-    .pad { width: 600px; margin: auto; }
-    .btn { fill: #444; transition: fill 120ms, filter 120ms; }
-    .btn.active { fill: #ffb86b; filter: drop-shadow(0 0 8px rgba(255,184,107,0.9)); }
-    .label { fill: #fff; font-size: 11px; pointer-events: none; }
-  </style>
-</head>
-<body>
-  <h1>DualShock 4 — Live (lightweight)</h1>
-  <div class="pad">
-    <!-- Very simple illustrative SVG. IDs map to button ids emitted by daemon -->
-    <svg viewBox="0 0 600 300" width="100%">
-      <!-- Left cluster -->
-      <circle id="triangle" class="btn" cx="450" cy="80" r="18" />
-      <circle id="circle" class="btn" cx="485" cy="110" r="18" />
-      <circle id="cross" class="btn" cx="415" cy="110" r="18" />
-      <circle id="square" class="btn" cx="450" cy="140" r="18" />
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>COntrolUniversal Hub</title>
+    <style>
+      :root {
+        --bg: #0a0b10;
+        --primary: #107c10;
+        --secondary: #2b7cff;
+        --text: #f0f0f5;
+        --accent: #ffcc00;
+      }
 
-      <!-- Dpad -->
-      <rect id="dpad_up" class="btn" x="120" y="70" width="30" height="30" />
-      <rect id="dpad_left" class="btn" x="90" y="100" width="30" height="30" />
-      <rect id="dpad_right" class="btn" x="150" y="100" width="30" height="30" />
-      <rect id="dpad_down" class="btn" x="120" y="130" width="30" height="30" />
+      body {
+        background-color: var(--bg);
+        color: var(--text);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        overflow: hidden;
+        background-image: radial-gradient(
+            circle at 20% 30%,
+            rgba(16, 124, 16, 0.1) 0%,
+            transparent 50%
+          ),
+          radial-gradient(circle at 80% 70%, rgba(43, 124, 255, 0.1) 0%, transparent 50%);
+      }
 
-      <!-- Shoulder -->
-      <rect id="l1" class="btn" x="90" y="20" width="120" height="16" rx="6" />
-      <rect id="r1" class="btn" x="390" y="20" width="120" height="16" rx="6" />
+      h1 {
+        font-size: 3.5rem;
+        margin-bottom: 10px;
+        background: linear-gradient(135deg, #fff 0%, #a0a0b0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -2px;
+      }
 
-      <!-- Middle small buttons -->
-      <rect id="share" class="btn" x="260" y="90" width="24" height="18" rx="3" />
-      <rect id="options" class="btn" x="320" y="90" width="24" height="18" rx="3" />
-      <circle id="ps" class="btn" cx="295" cy="140" r="16" />
+      p {
+        color: #a0a0b0;
+        margin-bottom: 40px;
+        font-size: 1.2rem;
+      }
 
-    </svg>
-  </div>
-  <p>Open the Node server and connect hardware or run in simulation: <code>SIMULATE=1 npm run start</code></p>
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        max-width: 900px;
+        width: 100%;
+        padding: 20px;
+      }
 
-  <style>
-    /* Calibration panel visuals */
-    #calibration { position: fixed; right: 20px; top: 20px; background: linear-gradient(180deg,#262626,#141414); color: #fff; padding: 14px; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.6); width: 260px; font-family: system-ui, Arial; }
-    #calibration input { background: #222; color: #fff; border: 1px solid #444; padding: 4px; border-radius: 4px }
-    #calibration button { background: #2b7cff; color: #fff; border: none; padding: 6px 8px; margin: 2px; border-radius: 6px; cursor: pointer }
-    #calibration button.secondary { background: #555 }
-    #cal-log { margin-top: 8px; font-size:11px; height:80px; overflow:auto; background:#111; padding:6px; border-radius:4px }
+      .card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 30px;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+      }
 
-    /* Modal */
-    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 9999 }
-    .modal { background: #0f1720; color: #fff; padding: 18px; border-radius: 10px; width: 520px; box-shadow: 0 8px 30px rgba(0,0,0,0.7); }
-    .modal h3 { margin: 0 0 8px 0 }
-    .modal .instr { font-size: 14px; margin-bottom: 8px }
-    .modal .preview { background: #081018; padding: 8px; border-radius: 6px; max-height: 240px; overflow:auto; font-family: monospace; font-size: 12px }
-    .modal .controls { margin-top: 10px; display:flex; gap:8px; }
-    .hidden { display:none }
-  </style>
+      .card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      }
 
-  <div id="calibration">
-    <strong>Calibration</strong>
-    <div style="margin-top:8px;font-size:13px">Label(s): <input id="cal-label" style="width:140px" value="cross"></div>
-    <div style="margin-top:6px;font-size:13px">Count: <input id="cal-count" style="width:40px" value="3"></div>
-    <div id="cal-sensors" style="margin-top:8px;font-size:12px">Loading…</div>
-    <div id="axis-display" style="margin-top:8px;font-size:12px">lstick_x: 0.00  lstick_y: 0.00</div>
-    <div style="margin-top:8px">
-      <button id="cal-start">Start</button>
-      <button id="cal-auto">Auto (preview)</button>
-      <button id="cal-guided">Guided</button>
-      <button id="cal-refresh" class="secondary">Refresh</button>
-      <button id="cal-save" style="margin-left:6px" class="secondary">Save Inferred</button>
+      .card h2 {
+        margin-top: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .card p {
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 0;
+      }
+
+      .badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: var(--primary);
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+
+      .badge.blue {
+        background: var(--secondary);
+      }
+
+      .footer {
+        margin-top: 50px;
+        font-size: 0.8rem;
+        color: #555;
+      }
+
+      /* Interactive background glow */
+      .glow {
+        position: fixed;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(16, 124, 16, 0.15) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: -1;
+        transition: transform 0.1s ease-out;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="glow" id="glow"></div>
+
+    <h1>COntrolUniversal</h1>
+    <p>Suite de Diagnóstico y Monitoreo Multi-Plataforma</p>
+
+    <div class="grid">
+      <a href="xbox.html" class="card">
+        <h2><span class="badge">Xbox</span> Diagnostic Suite</h2>
+        <p>
+          Herramienta premium para mandos Xbox Series X|S y One. Analiza drift, latencia y precisión
+          de gatillos con latencia ultra-baja.
+        </p>
+      </a>
+
+      <a href="monitor.html" class="card">
+        <h2><span class="badge blue">Generic</span> DS4 Monitor</h2>
+        <p>
+          Monitor de bajo nivel para DualShock 4 y clones. Incluye herramientas de mapeo interactivo
+          y calibración de sensores.
+        </p>
+      </a>
     </div>
-    <div id="cal-log"></div>
-  </div>
 
-  <!-- Modal for guided calibration steps -->
-  <div class="modal-backdrop" id="cal-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-instr" tabindex="-1">
-      <h3 id="modal-title">Guided calibration</h3>
-      <div class="instr" id="modal-instr">Press the requested control when prompted.</div>
-      <div class="preview" id="modal-preview">Waiting...</div>
-      <div class="controls">
-        <button id="modal-accept" data-action="accept">Accept</button>
-        <button id="modal-retry" class="secondary" data-action="retry">Retry</button>
-        <button id="modal-skip" class="secondary" data-action="skip">Skip</button>
-        <button id="modal-close" class="secondary" data-action="close">Close</button>
-      </div>
-    </div>
-  </div>
+    <div class="footer">IYARI CANCINO GOMEZ &copy; 2026 — Advanced Agentic Coding</div>
 
-  <script>
-    // Try loading minified client first; fall back to unminified client.js on error
-    (function(){
-      const s = document.createElement('script');
-      s.src = '/client.min.js';
-      s.onload = function(){ /* loaded minified */ };
-      s.onerror = function(){ const f = document.createElement('script'); f.src = '/client.js'; document.body.appendChild(f); };
-      document.body.appendChild(s);
-    })();
-  </script>
-  <script>
-    async function refreshStatus(){
-      try{
-        const r = await fetch('/api/status');
-        const j = await r.json();
-        const el = document.getElementById('cal-sensors');
-        if (j && j.sensors){
-          el.innerText = `battery: ${j.sensors.batteryCandidates.join(',') || 'n/a'}; motion: ${j.sensors.motionCandidates.join(',') || 'n/a'}`;
-        } else el.innerText = 'no data';
-      } catch(e){ document.getElementById('cal-sensors').innerText = 'err'; }
-    }
-    document.getElementById('cal-refresh').addEventListener('click', refreshStatus);
-    setTimeout(refreshStatus, 500);
-  </script>
-</body>
+    <script>
+      const glow = document.getElementById('glow');
+      window.addEventListener('mousemove', (e) => {
+        const x = e.clientX - 200;
+        const y = e.clientY - 200;
+        glow.style.transform = `translate(${x}px, ${y}px)`;
+      });
+    </script>
+  </body>
 </html>

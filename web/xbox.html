@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xbox Diagnostic — COntrolUniversal</title>
+    <link rel="stylesheet" href="xbox.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div class="container">
+      <header>
+        <h1>Xbox Diagnostic Suite</h1>
+        <p class="subtitle">Herramienta de precisión para mantenimiento y calibración de mandos</p>
+      </header>
+
+      <div class="main-grid">
+        <div class="card controller-card">
+          <div class="controller-viewer">
+            <div id="no-controller-msg" class="no-controller">
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="pulse"
+              >
+                <path
+                  d="M6 12h.01M18 12h.01M9 11v2m0 1h6m-7 5c-3 0-5-2-5-5s2-5 5-5m8 0c3 0 5 2 5 5s-2 5-5 5H9"
+                ></path>
+              </svg>
+              <p style="margin-top: 20px">Conecta un mando y presiona cualquier botón</p>
+            </div>
+
+            <svg id="controller-svg" viewBox="0 0 800 500">
+              <!-- Main Shell -->
+              <path
+                d="M150,150 Q150,100 250,90 L550,90 Q650,100 650,150 L680,350 Q690,450 550,440 L400,410 L250,440 Q110,450 120,350 Z"
+                fill="#1a1c25"
+                stroke="#333"
+                stroke-width="3"
+              />
+
+              <!-- Left Stick -->
+              <circle id="ls-base" cx="240" cy="210" r="45" fill="#111" stroke="#444" />
+              <circle id="ls-top" cx="240" cy="210" r="35" class="btn-viz" data-btn="10" />
+
+              <!-- Right Stick -->
+              <circle id="rs-base" cx="500" cy="310" r="45" fill="#111" stroke="#444" />
+              <circle id="rs-top" cx="500" cy="310" r="35" class="btn-viz" data-btn="11" />
+
+              <!-- D-Pad -->
+              <path
+                id="dpad-up"
+                d="M320,290 L350,290 L350,260 L380,260 L380,290 L410,290 L410,320 L380,320 L380,350 L350,350 L350,320 L320,320 Z"
+                fill="#111"
+                stroke="#444"
+              />
+              <rect
+                id="btn-12"
+                x="350"
+                y="260"
+                width="30"
+                height="30"
+                class="btn-viz"
+                data-btn="12"
+                opacity="0"
+              />
+              <!-- Up -->
+              <rect
+                id="btn-13"
+                x="350"
+                y="320"
+                width="30"
+                height="30"
+                class="btn-viz"
+                data-btn="13"
+                opacity="0"
+              />
+              <!-- Down -->
+              <rect
+                id="btn-14"
+                x="320"
+                y="290"
+                width="30"
+                height="30"
+                class="btn-viz"
+                data-btn="14"
+                opacity="0"
+              />
+              <!-- Left -->
+              <rect
+                id="btn-15"
+                x="380"
+                y="290"
+                width="30"
+                height="30"
+                class="btn-viz"
+                data-btn="15"
+                opacity="0"
+              />
+              <!-- Right -->
+
+              <!-- Buttons ABXY -->
+              <circle id="btn-0" cx="600" cy="210" r="22" class="btn-viz" data-btn="0" />
+              <!-- A -->
+              <circle id="btn-1" cx="645" cy="165" r="22" class="btn-viz" data-btn="1" />
+              <!-- B -->
+              <circle id="btn-2" cx="555" cy="165" r="22" class="btn-viz" data-btn="2" />
+              <!-- X -->
+              <circle id="btn-3" cx="600" cy="120" r="22" class="btn-viz" data-btn="3" />
+              <!-- Y -->
+
+              <text
+                x="592"
+                y="218"
+                fill="white"
+                font-size="20"
+                font-weight="bold"
+                pointer-events="none"
+              >
+                A
+              </text>
+              <text
+                x="637"
+                y="173"
+                fill="white"
+                font-size="20"
+                font-weight="bold"
+                pointer-events="none"
+              >
+                B
+              </text>
+              <text
+                x="547"
+                y="173"
+                fill="white"
+                font-size="20"
+                font-weight="bold"
+                pointer-events="none"
+              >
+                X
+              </text>
+              <text
+                x="592"
+                y="128"
+                fill="white"
+                font-size="20"
+                font-weight="bold"
+                pointer-events="none"
+              >
+                Y
+              </text>
+
+              <!-- Shoulders -->
+              <path
+                id="btn-4"
+                d="M160,110 L280,105 L280,125 L165,130 Z"
+                class="btn-viz"
+                data-btn="4"
+              />
+              <!-- LB -->
+              <path
+                id="btn-5"
+                d="M640,110 L520,105 L520,125 L635,130 Z"
+                class="btn-viz"
+                data-btn="5"
+              />
+              <!-- RB -->
+
+              <!-- Center Buttons -->
+              <circle id="btn-16" cx="400" cy="160" r="25" class="btn-viz" data-btn="16" />
+              <!-- Xbox -->
+              <rect
+                id="btn-8"
+                x="340"
+                y="190"
+                width="30"
+                height="15"
+                rx="5"
+                class="btn-viz"
+                data-btn="8"
+              />
+              <!-- View -->
+              <rect
+                id="btn-9"
+                x="430"
+                y="190"
+                width="30"
+                height="15"
+                rx="5"
+                class="btn-viz"
+                data-btn="9"
+              />
+              <!-- Menu -->
+              <rect
+                id="btn-17"
+                x="390"
+                y="210"
+                width="20"
+                height="12"
+                rx="3"
+                class="btn-viz"
+                data-btn="17"
+              />
+              <!-- Share -->
+            </svg>
+          </div>
+        </div>
+
+        <div class="stats-panel">
+          <div class="card">
+            <div class="stat-item">
+              <span class="stat-label">Estado</span>
+              <div id="status-badge" class="status-badge status-disconnected">Desconectado</div>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">ID del Mando</span>
+              <span id="controller-id" class="stat-value" style="font-size: 0.7rem">N/A</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Polling Rate</span>
+              <span id="polling-rate" class="stat-value">0 Hz</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Modo de Conexión</span>
+              <span id="connection-mode" class="stat-value" style="color: var(--accent-cyan)"
+                >Browser (Direct)</span
+              >
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-bottom: 20px; font-size: 1rem; color: var(--text-secondary)">
+              Stick Drift & Deadzones
+            </h3>
+            <div style="display: flex; gap: 20px; justify-content: center">
+              <div style="text-align: center">
+                <div class="drift-viz">
+                  <div id="ls-dot" class="drift-dot"></div>
+                </div>
+                <div style="font-size: 10px; margin-top: 5px; color: var(--text-secondary)">LS</div>
+              </div>
+              <div style="text-align: center">
+                <div class="drift-viz">
+                  <div id="rs-dot" class="drift-dot"></div>
+                </div>
+                <div style="font-size: 10px; margin-top: 5px; color: var(--text-secondary)">RS</div>
+              </div>
+            </div>
+            <div style="margin-top: 20px; font-size: 0.8rem">
+              <div id="ls-coords">LS: 0.00, 0.00</div>
+              <div id="rs-coords">RS: 0.00, 0.00</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-bottom: 20px; font-size: 1rem; color: var(--text-secondary)">
+              Gatillos (Triggers)
+            </h3>
+            <div>
+              <div class="stat-label">
+                Left Trigger (LT) <span id="lt-val" class="stat-value">0%</span>
+              </div>
+              <div class="trigger-bar">
+                <div id="lt-fill" class="trigger-fill"></div>
+              </div>
+            </div>
+            <div style="margin-top: 15px">
+              <div class="stat-label">
+                Right Trigger (RT) <span id="rt-val" class="stat-value">0%</span>
+              </div>
+              <div class="trigger-bar">
+                <div id="rt-fill" class="trigger-fill"></div>
+              </div>
+            </div>
+          </div>
+
+          <button id="vibration-btn" class="vibration-test">Probar Vibración (Haptic)</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 30px">
+        <h3 style="margin-bottom: 15px; font-size: 1.1rem">Guía de Diagnóstico</h3>
+        <ul
+          style="
+            list-style: none;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+          "
+        >
+          <li>
+            • <strong>Stick Drift:</strong> El punto azul debe estar centrado cuando no toques los
+            joysticks.
+          </li>
+          <li>
+            • <strong>Latency:</strong> Un polling rate estable de 125Hz-250Hz es normal para mandos
+            Bluetooth, hasta 1000Hz por cable.
+          </li>
+          <li>
+            • <strong>Botones:</strong> Si un botón no brilla en verde al presionarlo, puede tener
+            suciedad o daño físico.
+          </li>
+          <li>
+            • <strong>Conexión:</strong> Si el mando no aparece, intenta usar un cable de datos
+            certificado y reinicia el servidor.
+          </li>
+        </ul>
+        <div
+          id="debug-log"
+          style="
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 10px;
+            color: #666;
+            max-height: 60px;
+            overflow: auto;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+            display: none;
+          "
+        >
+          [DEBUG] Esperando eventos de hardware...
+        </div>
+      </div>
+
+      <footer>PROYECTO CONTROL UNIVERSAL — IYARI CANCINO GOMEZ &copy; 2026</footer>
+    </div>
+
+    <script src="xbox.js"></script>
+  </body>
+</html>

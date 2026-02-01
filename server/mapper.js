@@ -2,16 +2,26 @@
 // Interactive mapper for DualShock 4 (Node)
 // Usage: MAP=1 node server/mapper.js
 
-const HID = (() => { try { return require('node-hid'); } catch (e) { return null; } })();
+const HID = (() => {
+  try {
+    return require('node-hid');
+  } catch (e) {
+    return null;
+  }
+})();
 const fs = require('fs');
 const path = require('path');
 
 const devices = HID ? HID.devices() : [];
 console.log('HID devices:', devices.length);
 
-const target = devices.find(d => /Sony/i.test(d.manufacturer || '') || /Wireless Controller/i.test(d.product || ''));
+const target = devices.find(
+  (d) => /Sony/i.test(d.manufacturer || '') || /Wireless Controller/i.test(d.product || '')
+);
 if (!target) {
-  console.log('No DualShock-like device found. You can still run mapper in simulated mode with SIMULATE=1.');
+  console.log(
+    'No DualShock-like device found. You can still run mapper in simulated mode with SIMULATE=1.'
+  );
 }
 
 let device = null;
@@ -31,7 +41,9 @@ function showHelp() {
   console.log('\nControls:');
   console.log('  Press a button on the controller — mapper prints byte diffs.');
   console.log('  Press Ctrl+C to stop.');
-  console.log('  To generate a mapping, press each button once while watching reported diffs and record the (byte,mask) pairs in a file called .ds4map.json');
+  console.log(
+    '  To generate a mapping, press each button once while watching reported diffs and record the (byte,mask) pairs in a file called .ds4map.json'
+  );
 }
 
 showHelp();
@@ -39,7 +51,7 @@ showHelp();
 function printDiff(prev, cur) {
   const diffs = [];
   const len = Math.max(prev.length, cur.length);
-  for (let i=0;i<len;i++) {
+  for (let i = 0; i < len; i++) {
     const a = prev[i] || 0;
     const b = cur[i] || 0;
     if (a !== b) diffs.push({ idx: i, before: a, after: b });
@@ -69,4 +81,7 @@ if (device) {
   simulate();
 }
 
-process.on('SIGINT', () => { console.log('\nMapper stopped.'); process.exit(0); });
+process.on('SIGINT', () => {
+  console.log('\nMapper stopped.');
+  process.exit(0);
+});

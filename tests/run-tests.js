@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const testDir = __dirname;
 
-const files = fs.readdirSync(testDir).filter(f => f.endsWith('.test.js'));
+const files = fs.readdirSync(testDir).filter((f) => f.endsWith('.test.js'));
 let failed = 0;
 for (const file of files) {
   console.log('Running tests in', file);
@@ -13,7 +13,11 @@ for (const file of files) {
       const r = fn();
       if (r && typeof r.then === 'function') {
         // async test returning Promise
-        r.then(()=> console.log('  ✓', name)).catch(e=>{ failed++; console.error('  ✗', name, '-', e && e.message); console.error(e && e.stack); });
+        r.then(() => console.log('  ✓', name)).catch((e) => {
+          failed++;
+          console.error('  ✗', name, '-', e && e.message);
+          console.error(e && e.stack);
+        });
       } else {
         console.log('  ✓', name);
       }
@@ -28,11 +32,22 @@ for (const file of files) {
 // Run Python tests too if pytest is available
 const { execSync } = require('child_process');
 try {
+  // check that 'python' is available before running tests
+  try {
+    execSync('command -v python', { stdio: 'ignore' });
+  } catch (e) {
+    console.log('Skipping Python tests: python not found');
+    throw new Error('skip-python');
+  }
   console.log('Running Python tests...');
   execSync('python -m pytest -q', { stdio: 'inherit' });
 } catch (e) {
-  console.warn('Python tests failed or pytest not available in environment.');
-  failed++;
+  if (e && e.message === 'skip-python') {
+    // do not treat missing python as a failed test run
+  } else {
+    console.warn('Python tests failed or pytest not available in environment.');
+    failed++;
+  }
 }
 
 if (failed) {

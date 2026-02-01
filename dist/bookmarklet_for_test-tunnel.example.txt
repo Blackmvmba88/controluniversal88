@@ -1,0 +1,1 @@
+javascript:(function(){var s=document.createElement('script');s.src='https://test-tunnel.example/bookmarklet.js';document.head.appendChild(s);setTimeout(function(){connectToController('https://test-tunnel.example')},200);})();

@@ -1,0 +1,156 @@
+USB:
+
+    USB 3.1 Bus:
+
+      Host Controller Driver: AppleT8103USBXHCI
+
+    USB 3.1 Bus:
+
+      Host Controller Driver: AppleT8103USBXHCI
+
+    USB 3.0 Bus:
+
+      Host Controller Driver: AppleEmbeddedUSBXHCIFL1100
+      PCI Device ID: 0x1100 
+      PCI Revision ID: 0x0010 
+      PCI Vendor ID: 0x1b73 
+
+    USB 3.1 Bus:
+
+      Host Controller Driver: AppleUSBXHCITR
+      PCI Device ID: 0x15f0 
+      PCI Revision ID: 0x0006 
+      PCI Vendor ID: 0x8086 
+
+        USB3 Gen2 Hub:
+
+          Product ID: 0x101e
+          Vendor ID: 0x05ac (Apple Inc.)
+          Version: 52.12
+          Serial Number: N64J3XMHWJ
+          Speed: Up to 10 Gb/s
+          Manufacturer: Apple
+          Location ID: 0x03300000 / 8
+          Current Available (mA): 900
+          Current Required (mA): 0
+          Extra Operating Current (mA): 0
+
+            USB3.1 Hub:
+
+              Product ID: 0x0626
+              Vendor ID: 0x05e3  (Genesys Logic, Inc.)
+              Version: 6.63
+              Speed: Up to 5 Gb/s
+              Manufacturer: GenesysLogic
+              Location ID: 0x03320000 / 12
+              Current Available (mA): 900
+              Current Required (mA): 0
+              Extra Operating Current (mA): 0
+
+                SC740:
+
+                  Product ID: 0xa49a
+                  Vendor ID: 0x125f  (ADATA Technology Co., Ltd.)
+                  Version: 1.00
+                  Serial Number: 252620000495
+                  Speed: Up to 5 Gb/s
+                  Manufacturer: ADATA
+                  Location ID: 0x03321000 / 17
+                  Current Available (mA): 900
+                  Current Required (mA): 896
+                  Extra Operating Current (mA): 0
+                  Media:
+                    SC740:
+                      Capacity: 1 TB (1,000,204,886,016 bytes)
+                      Removable Media: No
+                      BSD Name: disk4
+                      Logical Unit: 0
+                      Partition Map Type: GPT (GUID Partition Table)
+                      S.M.A.R.T. status: Verified
+                      USB Interface: 0
+                      Volumes:
+                        disk4s1:
+                          Capacity: 134.2 MB (134,217,728 bytes)
+                          BSD Name: disk4s1
+                          Content: Microsoft Reserved
+                        ADATA SC740:
+                          Capacity: 1 TB (1,000,068,874,240 bytes)
+                          Free: 47.56 GB (47,561,834,496 bytes)
+                          Writable: Yes
+                          File System: ExFAT
+                          BSD Name: disk4s2
+                          Mount Point: /Volumes/ADATA SC740
+                          Content: Microsoft Basic Data
+                          Volume UUID: E8BA9652-1F53-3AB2-95F4-AD393342DB3B
+
+        USB2 Hub:
+
+          Product ID: 0x101d
+          Vendor ID: 0x05ac (Apple Inc.)
+          Version: 52.12
+          Serial Number: N64J3XMHWJ
+          Speed: Up to 480 Mb/s
+          Manufacturer: Apple
+          Location ID: 0x03100000 / 2
+          Current Available (mA): 500
+          Current Required (mA): 0
+          Extra Operating Current (mA): 0
+
+            USB2.1 Hub:
+
+              Product ID: 0x0610
+              Vendor ID: 0x05e3  (Genesys Logic, Inc.)
+              Version: 6.63
+              Speed: Up to 480 Mb/s
+              Manufacturer: GenesysLogic
+              Location ID: 0x03120000 / 13
+              Current Available (mA): 500
+              Current Required (mA): 100
+              Extra Operating Current (mA): 0
+
+                USB2.0 HUB:
+
+                  Product ID: 0x7250
+                  Vendor ID: 0x214b
+                  Version: 1.00
+                  Speed: Up to 480 Mb/s
+                  Location ID: 0x03122000 / 14
+                  Current Available (mA): 500
+                  Current Required (mA): 100
+                  Extra Operating Current (mA): 0
+
+                    USB Optical Mouse :
+
+                      Product ID: 0x0400
+                      Vendor ID: 0x30fa
+                      Version: 1.00
+                      Speed: Up to 1.5 Mb/s
+                      Location ID: 0x03122300 / 16
+                      Current Available (mA): 500
+                      Current Required (mA): 100
+                      Extra Operating Current (mA): 0
+
+                    CASUE USB KB:
+
+                      Product ID: 0x8927
+                      Vendor ID: 0x2a7a
+                      Version: 0.01
+                      Speed: Up to 1.5 Mb/s
+                      Location ID: 0x03122100 / 15
+                      Current Available (mA): 500
+                      Current Required (mA): 300
+                      Extra Operating Current (mA): 0
+
+            Studio Display:
+
+              Product ID: 0x1114
+              Vendor ID: 0x05ac (Apple Inc.)
+              Version: 2.01
+              Serial Number: 00008030-001A41381A92802E
+              Speed: Up to 480 Mb/s
+              Manufacturer: Apple Inc.
+              Location ID: 0x03140000 / 4
+              Current Available (mA): 500
+              Current Required (mA): 500
+              Extra Operating Current (mA): 0
+

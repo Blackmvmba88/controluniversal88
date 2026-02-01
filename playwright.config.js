@@ -5,12 +5,12 @@ module.exports = {
   testDir: 'tests/playwright',
   use: {
     headless: true,
-    viewport: { width: 1280, height: 800 }
+    viewport: { width: 1280, height: 800 },
   },
   webServer: {
     command: 'npm run start:sim',
     port: 8080,
     timeout: 15000,
-    reuseExistingServer: process.env.CI ? false : true
-  }
+    reuseExistingServer: process.env.CI ? false : true,
+  },
 };

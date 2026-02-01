@@ -5,7 +5,11 @@ const logger = require('./logger');
 const SIMULATE = process.env.SIMULATE === '1' || process.env.SIMULATE === 'true';
 const MAP_MODE = process.env.MAP === '1' || process.env.MAP === 'true';
 let HID;
-try { HID = require('node-hid'); } catch (e) { /* node-hid may be unavailable */ }
+try {
+  HID = require('node-hid');
+} catch (e) {
+  /* node-hid may be unavailable */
+}
 
 // A minimal, practical DS4 parser with interactive mapping support.
 // It attempts a best-effort decode for common DS4 USB reports and
@@ -18,20 +22,20 @@ const DEFAULT_MAP = {
   buttons: {
     // face buttons (example mapping, may vary by hardware/firmware)
     square: [5, 0x10],
-    cross:  [5, 0x20],
+    cross: [5, 0x20],
     circle: [5, 0x40],
-    triangle:[5,0x80],
+    triangle: [5, 0x80],
     l1: [6, 0x01],
     r1: [6, 0x02],
-    l2_btn: [6,0x04],
-    r2_btn: [6,0x08],
-    share: [6,0x10],
-    options: [6,0x20],
-    lstick: [6,0x40],
-    rstick: [6,0x80],
-    ps: [7,0x01]
+    l2_btn: [6, 0x04],
+    r2_btn: [6, 0x08],
+    share: [6, 0x10],
+    options: [6, 0x20],
+    lstick: [6, 0x40],
+    rstick: [6, 0x80],
+    ps: [7, 0x01],
   },
-  dpad: { byte: 5, mask: 0x0f } // lower nibble 0..7 for direction
+  dpad: { byte: 5, mask: 0x0f }, // lower nibble 0..7 for direction
 };
 
 class Daemon extends EventEmitter {
@@ -67,7 +71,11 @@ class Daemon extends EventEmitter {
       const devices = HID.devices();
       logger.info('HID devices found:', devices.length);
       // Broad vendor/product detection: support Sony (DualShock) and common third-party controllers (PowerA / XBX / Xbox / generic Controller)
-      const ds = devices.find(d => /Sony|PlayStation|Wireless Controller|PowerA|XBX|Xbox|Controller/i.test((d.manufacturer || '') + ' ' + (d.product || '')));
+      const ds = devices.find((d) =>
+        /Sony|PlayStation|Wireless Controller|PowerA|XBX|Xbox|Controller|Microsoft|X-box|Hyperkin|X91/i.test(
+          (d.manufacturer || '') + ' ' + (d.product || '')
+        )
+      );
       if (!ds) {
         logger.warn('No supported controller found; falling back to simulation.');
         this._simulate();
@@ -76,14 +84,14 @@ class Daemon extends EventEmitter {
       logger.info('Attempting to open controller device:', ds);
       const device = new HID.HID(ds.path);
       this._device = device;
-      device.on('data', buf => {
+      device.on('data', (buf) => {
         try {
           this._handleBuffer(buf);
         } catch (err) {
           console.error('Error handling buffer:', err);
         }
       });
-      device.on('error', err => {
+      device.on('error', (err) => {
         logger.error('HID error:', err);
         logger.info('Falling back to simulation.');
         this._simulate();
@@ -96,7 +104,7 @@ class Daemon extends EventEmitter {
 
   _handleBuffer(buf) {
     // Validate buffer and use Buffer for efficient byte access
-    if (!buf || (typeof buf.length !== 'number') || buf.length === 0) return;
+    if (!buf || typeof buf.length !== 'number' || buf.length === 0) return;
     const b = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
     const state = { raw: b };
 
@@ -106,7 +114,8 @@ class Daemon extends EventEmitter {
     if (this._recent.length > 8) this._recent.shift();
 
     // helper to safely get a byte or null
-    const getByte = (idx) => (typeof idx === 'number' && idx >= 0 && idx < b.length) ? b[idx] : null;
+    const getByte = (idx) =>
+      typeof idx === 'number' && idx >= 0 && idx < b.length ? b[idx] : null;
 
     // Parse axes by mapping indices (validate mapping entries)
     state.axes = {};
@@ -128,8 +137,14 @@ class Daemon extends EventEmitter {
       if (rawByte !== null && typeof dCfg.mask === 'number') {
         const nibble = rawByte & dCfg.mask;
         const dirMap = {
-          0: 'dpad_up', 1: 'dpad_up|dpad_right', 2:'dpad_right', 3:'dpad_down|dpad_right',
-          4: 'dpad_down', 5:'dpad_down|dpad_left',6:'dpad_left',7:'dpad_left|dpad_up'
+          0: 'dpad_up',
+          1: 'dpad_up|dpad_right',
+          2: 'dpad_right',
+          3: 'dpad_down|dpad_right',
+          4: 'dpad_down',
+          5: 'dpad_down|dpad_left',
+          6: 'dpad_left',
+          7: 'dpad_left|dpad_up',
         };
         if (nibble in dirMap) state.dpad = dirMap[nibble];
       }
@@ -139,7 +154,10 @@ class Daemon extends EventEmitter {
     state.buttons = {};
     const btnMap = this.mapping && this.mapping.buttons ? this.mapping.buttons : {};
     for (const [name, pair] of Object.entries(btnMap)) {
-      if (!Array.isArray(pair) || pair.length < 2) { state.buttons[name] = false; continue; }
+      if (!Array.isArray(pair) || pair.length < 2) {
+        state.buttons[name] = false;
+        continue;
+      }
       const [byteIdx, mask] = pair;
       const val = getByte(byteIdx);
       if (typeof val === 'number' && typeof mask === 'number') {
@@ -153,7 +171,7 @@ class Daemon extends EventEmitter {
           if (prevMappedVal === val && val === 0) {
             const { findSingleBitChange } = require('../server/auto_map_core');
             const single = findSingleBitChange(prevRaw, curRaw);
-            if (single && ((single.xor & (mask || 0)) !== 0)) state.buttons[name] = true;
+            if (single && (single.xor & (mask || 0)) !== 0) state.buttons[name] = true;
           }
         }
       } else {
@@ -180,15 +198,21 @@ class Daemon extends EventEmitter {
     if (!this.prevState) {
       // Emit initial state but be conservative: only emit axes and button presses that are true
       this.prevState = state;
-      Object.entries(state.buttons).forEach(([k,v]) => { if (v) this.emit('input', { type: 'button', id: k, value: 1 }); });
-      Object.entries(state.axes).forEach(([k,v]) => this.emit('input', { type: 'axis', id: k, value: Number(v.toFixed(2)) }));
+      Object.entries(state.buttons).forEach(([k, v]) => {
+        if (v) this.emit('input', { type: 'button', id: k, value: 1 });
+      });
+      Object.entries(state.axes).forEach(([k, v]) =>
+        this.emit('input', { type: 'axis', id: k, value: Number(v.toFixed(2)) })
+      );
       return;
     }
 
     if (MAP_MODE) {
       // Print byte-wise diffs for interactive mapping
       const diffs = [];
-      for (let i=0;i<b.length;i++) if (b[i] !== this.prevState.raw[i]) diffs.push({ idx:i, before:this.prevState.raw[i], after:b[i] });
+      for (let i = 0; i < b.length; i++)
+        if (b[i] !== this.prevState.raw[i])
+          diffs.push({ idx: i, before: this.prevState.raw[i], after: b[i] });
       if (diffs.length) console.log('Report diff:', diffs);
     }
 
@@ -203,8 +227,11 @@ class Daemon extends EventEmitter {
     // D-Pad: emit as individual buttons
     if (state.dpad !== this.prevState.dpad) {
       // clear previous dpad bits
-      ['dpad_up','dpad_down','dpad_left','dpad_right'].forEach(id => this.emit('input', { type: 'button', id, value: 0 }));
-      if (state.dpad) state.dpad.split('|').forEach(id => this.emit('input', { type: 'button', id, value: 1 }));
+      ['dpad_up', 'dpad_down', 'dpad_left', 'dpad_right'].forEach((id) =>
+        this.emit('input', { type: 'button', id, value: 0 })
+      );
+      if (state.dpad)
+        state.dpad.split('|').forEach((id) => this.emit('input', { type: 'button', id, value: 1 }));
     }
 
     // Axes thresholded updates
@@ -225,7 +252,7 @@ class Daemon extends EventEmitter {
         const candidateIdx = findMostVariableByte(this._recent);
         if (typeof candidateIdx === 'number') {
           // emit approximate axis value
-          const candVal = ( (this._recent[this._recent.length-1][candidateIdx] || 0) - 128) / 127;
+          const candVal = ((this._recent[this._recent.length - 1][candidateIdx] || 0) - 128) / 127;
           this.emit('input', { type: 'axis', id: name, value: Number(candVal.toFixed(2)) });
         }
       }
@@ -240,13 +267,15 @@ class Daemon extends EventEmitter {
     return {
       mapping: this.mapping,
       recentReports: this._recent || [],
-      sensors: core.detectSensorCandidates(this._recent || [])
+      sensors: core.detectSensorCandidates(this._recent || []),
     };
   }
 
   saveMapping(mappingObj) {
     const outPath = path.join(process.cwd(), '.ds4map.json');
-    try { if (fs.existsSync(outPath)) fs.copyFileSync(outPath, outPath + '.bak.' + Date.now()); } catch (e) {}
+    try {
+      if (fs.existsSync(outPath)) fs.copyFileSync(outPath, outPath + '.bak.' + Date.now());
+    } catch (e) {}
     fs.writeFileSync(outPath, JSON.stringify(mappingObj, null, 2));
     this.mapping = mappingObj;
   }
@@ -257,13 +286,24 @@ class Daemon extends EventEmitter {
     setInterval(() => {
       const btn = buttons[Math.floor(Math.random() * buttons.length)];
       this.emit('input', { type: 'button', id: btn, value: 1 });
-      setTimeout(() => this.emit('input', { type: 'button', id: btn, value: 0 }), 200 + Math.random() * 600);
+      setTimeout(
+        () => this.emit('input', { type: 'button', id: btn, value: 0 }),
+        200 + Math.random() * 600
+      );
     }, 400);
 
     // Simulate some axis movement occasionally
     setInterval(() => {
-      this.emit('input', { type: 'axis', id: 'lstick_x', value: (Math.random() * 2 - 1).toFixed(2) });
-      this.emit('input', { type: 'axis', id: 'lstick_y', value: (Math.random() * 2 - 1).toFixed(2) });
+      this.emit('input', {
+        type: 'axis',
+        id: 'lstick_x',
+        value: (Math.random() * 2 - 1).toFixed(2),
+      });
+      this.emit('input', {
+        type: 'axis',
+        id: 'lstick_y',
+        value: (Math.random() * 2 - 1).toFixed(2),
+      });
     }, 1000);
   }
 }

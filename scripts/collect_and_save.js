@@ -3,16 +3,21 @@ const collectLib = require('../server/collect_lib');
 const fs = require('fs');
 const path = require('path');
 
-async function main(){
+async function main() {
   const args = process.argv.slice(2);
   const argv = {};
-  for (let i=0;i<args.length;i++){
+  for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === '--auto') argv.auto = true;
     else if (a === '--save') argv.save = true;
     else if (a === '--label') argv.label = args[++i];
     else if (a === '--count') argv.count = args[++i];
-    else if (a === '--help') { console.log('Usage: scripts/collect_and_save.js [--auto] [--label NAME] [--count N] [--save]'); process.exit(0); }
+    else if (a === '--help') {
+      console.log(
+        'Usage: scripts/collect_and_save.js [--auto] [--label NAME] [--count N] [--save]'
+      );
+      process.exit(0);
+    }
   }
   const count = Number(argv.count) || 3;
   const save = !!argv.save;
@@ -20,18 +25,47 @@ async function main(){
   const label = argv.label || 'manual';
 
   if (auto) {
-    const buttons = ['square','cross','circle','triangle','l1','r1','l2_btn','r2_btn','share','options','lstick','rstick','ps','dpad_up','dpad_right','dpad_down','dpad_left'];
+    const buttons = [
+      'square',
+      'cross',
+      'circle',
+      'triangle',
+      'l1',
+      'r1',
+      'l2_btn',
+      'r2_btn',
+      'share',
+      'options',
+      'lstick',
+      'rstick',
+      'ps',
+      'dpad_up',
+      'dpad_right',
+      'dpad_down',
+      'dpad_left',
+    ];
     const aggregated = [];
     for (const b of buttons) {
       console.log('Collecting for', b);
-      const mapping = await collectLib.collectSamples({ label: b, count, simulate: process.env.SIMULATE === '1', save: false }, (s)=>{});
+      const mapping = await collectLib.collectSamples(
+        { label: b, count, simulate: process.env.SIMULATE === '1', save: false },
+        (s) => {}
+      );
       aggregated.push(mapping);
     }
     const final = { axes: {}, buttons: {}, dpad: { byte: null, mask: 15 } };
-    for (const m of aggregated) { Object.assign(final.axes, m.axes || {}); Object.assign(final.buttons, m.buttons || {}); if (m.dpad && m.dpad.byte) final.dpad = m.dpad; }
+    for (const m of aggregated) {
+      Object.assign(final.axes, m.axes || {});
+      Object.assign(final.buttons, m.buttons || {});
+      if (m.dpad && m.dpad.byte) final.dpad = m.dpad;
+    }
     // validate using samples file
     let samples = [];
-    try{ samples = JSON.parse(fs.readFileSync(path.join(process.cwd(), '.ds4map.samples.json'),'utf8')); } catch(e){}
+    try {
+      samples = JSON.parse(
+        fs.readFileSync(path.join(process.cwd(), '.ds4map.samples.json'), 'utf8')
+      );
+    } catch (e) {}
     const core = require('../server/auto_map_core');
     const validation = core.validateMapping(final, samples);
     console.log('Validation result:', validation.ok ? 'OK' : 'FAILED', validation.details || '');
@@ -48,12 +82,23 @@ async function main(){
     process.exit(0);
   } else {
     console.log('Collecting samples for label', label, 'count', count, 'save', save);
-    const mapping = await collectLib.collectSamples({ label, count, simulate: process.env.SIMULATE === '1', save }, (s)=>{ if (s && s.step) console.log('progress:', s.step); });
-    console.log('Done. Validation:', mapping._validation && mapping._validation.ok ? 'OK' : 'FAILED');
+    const mapping = await collectLib.collectSamples(
+      { label, count, simulate: process.env.SIMULATE === '1', save },
+      (s) => {
+        if (s && s.step) console.log('progress:', s.step);
+      }
+    );
+    console.log(
+      'Done. Validation:',
+      mapping._validation && mapping._validation.ok ? 'OK' : 'FAILED'
+    );
     if (mapping._saved) console.log('Mapping saved to .ds4map.json');
     if (mapping._failedPath) console.log('Failed mapping saved to', mapping._failedPath);
     process.exit(mapping._validation && mapping._validation.ok ? 0 : 2);
   }
 }
 
-main().catch(e=>{ console.error('Error:', e); process.exit(1); });
+main().catch((e) => {
+  console.error('Error:', e);
+  process.exit(1);
+});

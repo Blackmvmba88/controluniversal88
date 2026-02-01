@@ -24,6 +24,7 @@
     "start:tunnel": "node scripts/start-tunnel.js",
     "check:json": "node scripts/check-json.js",
     "prepare": "husky install",
+    "format": "prettier --write .",
     "test": "node tests/run-tests.js",
     "test:py": "python -m pytest -q",
     "start:py": "python3 python/server.py"

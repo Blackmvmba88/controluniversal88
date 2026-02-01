@@ -1,0 +1,152 @@
+name: E2E with Tunnel
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  e2e-tunnel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Cache node_modules & Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/ms-playwright
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps
+      - name: Start server (SIMULATE)
+        run: |
+          SIMULATE=1 npm run start &
+          # wait for server to be available
+          for i in 1 2 3 4 5; do
+            if nc -z localhost 8080; then echo 'server up'; break; else echo 'waiting for server...'; sleep 1; fi
+          done
+      - name: Start tunnel (localtunnel or ngrok)
+        id: start_tunnel
+        run: |
+          # Prefer ngrok when NGROK_AUTH is provided. Retry a few times to avoid flakiness.
+          set -euo pipefail
+          try_ngrok(){
+            if [ -n "${{ secrets.NGROK_AUTH_TOKEN || '' }}" ]; then
+              echo 'Using ngrok with auth token';
+              npm i -g ngrok@4.0.0 || true
+              ngrok config add-authtoken "${{ secrets.NGROK_AUTH_TOKEN }}" || true
+              for i in 1 2 3; do
+                echo "Attempt $i to start ngrok";
+                NG_URL=$(ngrok http 8080 --log=stdout --log-format=json 2>&1 | grep -o 'https://[a-z0-9.-]*' | head -n1 || true);
+                if [ -n "$NG_URL" ]; then echo "NG_URL=$NG_URL"; echo "LT_URL=$NG_URL" >> $GITHUB_ENV; exit 0; fi
+                sleep 2
+              done
+              return 1
+            fi
+            return 2
+          }
+          if try_ngrok; then exit 0; fi
+          echo 'Falling back to localtunnel'
+          for i in 1 2 3; do
+            npx localtunnel --port 8080 --print-requests > lt.txt 2>&1 &
+            sleep 3
+            LT_URL=$(grep -o 'https://[[:alnum:].-]*' lt.txt | head -n1 || true)
+            if [ -n "$LT_URL" ]; then echo "LT_URL=$LT_URL" >> $GITHUB_ENV; break; fi
+            echo 'retrying localtunnel...'; pkill -f localtunnel || true; sleep 1
+          done
+      - name: Create bookmarklet from tunnel URL
+        id: create_bookmarklet
+        env:
+          BOOKMARKLET_TTL_HOURS: ${{ secrets.BOOKMARKLET_TTL_HOURS || '4' }}
+        run: |
+          echo 'Generating bookmarklet from tunnel URL and registering with server...'
+          PR=${{ github.event.pull_request.number || '' }}
+          AUTHOR=${{ github.event.pull_request.user.login || '' }}
+          TTL=${BOOKMARKLET_TTL_HOURS}
+          RESP=$(curl -sS -X POST "http://localhost:8080/api/bookmarklet" -H 'Content-Type: application/json' -d "{ \"url\": \"$LT_URL\", \"pr\": $PR, \"author\": \"$AUTHOR\", \"ttl_hours\": $TTL }")
+          echo "$RESP" | jq -r '.fileUrl // .bookmarklet' > bookmarklet.txt
+          echo "$RESP" > bookmarklet.json
+          echo 'Saved bookmarklet to bookmarklet.txt and bookmarklet.json' && ls -l bookmarklet.* || true
+          # expose values for downstream steps
+          echo "BOOKMARKLET_PATH=bookmarklet.txt" >> $GITHUB_ENV
+          echo "BOOKMARKLET_JSON=bookmarklet.json" >> $GITHUB_ENV
+          echo "BOOKMARKLET_URL=$(jq -r '.fileUrl // empty' bookmarklet.json)" >> $GITHUB_ENV
+          echo "BOOKMARKLET_TOKEN=$(jq -r '.token // empty' bookmarklet.json)" >> $GITHUB_ENV
+          echo "BOOKMARKLET_SHA=$(jq -r '.sha // empty' bookmarklet.json)" >> $GITHUB_ENV
+      - name: Upload bookmarklet artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookmarklet
+          path: bookmarklet.txt
+          retention-days: ${{ secrets.ARTIFACT_RETENTION_DAYS || '1' }}
+      - name: Post PR comment with tunnel & bookmarklet link
+        if: github.event_name == 'pull_request'
+        id: post_comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LT_URL: ${{ env.LT_URL }}
+          BOOKMARKLET_PATH: ${{ env.BOOKMARKLET_PATH }}
+          BOOKMARKLET_URL: ${{ env.BOOKMARKLET_URL }}
+          BOOKMARKLET_TOKEN: ${{ env.BOOKMARKLET_TOKEN }}
+          BOOKMARKLET_SHA: ${{ env.BOOKMARKLET_SHA }}
+        run: |
+          PR=${{ github.event.pull_request.number }}
+          AUTHOR=${{ github.event.pull_request.user.login }}
+          # Build a tokenized file URL if server returned fileUrl
+          if [ -n "$BOOKMARKLET_URL" ]; then
+            FILE_URL="$BOOKMARKLET_URL"
+          else
+            FILE_URL="$LT_URL/bookmarklet.txt"
+          fi
+          # For audit, include metadata with sha and short token (not revealing bookmarklet content)
+          COMMENT_BODY="E2E Tunnel URL: $LT_URL\n\nBookmarklet file: $FILE_URL (sha: $BOOKMARKLET_SHA, token: $BOOKMARKLET_TOKEN)\n\nNote: token is short-lived and only for PR author: $AUTHOR"
+          echo "$COMMENT_BODY"
+          RESP=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" -d "{\"body\": \"$COMMENT_BODY\"}" "https://api.github.com/repos/${{ github.repository }}/issues/$PR/comments" || true)
+          # extract comment id and save for deletion
+          echo "$RESP" | jq -r '.id' > comment_id.txt
+          if [ -s comment_id.txt ]; then echo "COMMENT_ID=$(cat comment_id.txt)" >> $GITHUB_ENV; fi
+      - name: Run Playwright E2E (via tunnel)
+        env:
+          BASE_URL: ${{ env.LT_URL }}
+        run: npx playwright test --config=playwright.config.js --reporter=list
+      - name: Kill localtunnel/ngrok
+        if: always()
+        run: |
+          pkill -f ngrok || true
+          pkill -f localtunnel || true
+      - name: Cleanup old artifacts (optional)
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          ARTIFACT_TTL_HOURS: ${{ secrets.ARTIFACT_TTL_HOURS || '48' }}
+        run: |
+          node scripts/cleanup-artifacts.js --repo $GITHUB_REPO --hours ${ARTIFACT_TTL_HOURS} || true
+      - name: Delete PR comment (ephemeral)
+        if: always() && github.event_name == 'pull_request' && env.COMMENT_ID
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_ID: ${{ env.COMMENT_ID }}
+        run: |
+          echo "Deleting comment $COMMENT_ID"
+          curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${{ github.repository }}/issues/comments/$COMMENT_ID" || true
+      - name: Notify Slack on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            echo '{"text":"E2E tunnel job failed for $GITHUB_REPOSITORY on $GITHUB_REF. See actions for details."}' > payload.json
+            curl -sS -X POST -H 'Content-Type: application/json' --data-binary @payload.json "$SLACK_WEBHOOK" || true
+          else
+            echo 'SLACK_WEBHOOK not configured, skipping notification';
+          fi

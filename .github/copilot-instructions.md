@@ -3,6 +3,7 @@
 **Purpose:** Short, actionable guidance for AI coding agents to become productive quickly in this repository. The project appears to be empty now; these instructions focus on discovery steps and concrete checks an agent should perform when files are present.
 
 ## Quick discovery checklist (run immediately)
+
 1. Inspect repo root for common manifests: `package.json`, `pyproject.toml`, `requirements.txt`, `Pipfile`, `setup.py`, `Cargo.toml`, `go.mod`, `Makefile`, `Dockerfile`, `.github/workflows/**`, `README.md`.
 2. If `package.json` exists, run: `cat package.json` and look for `scripts` (e.g., `test`, `build`, `start`). Example: if `scripts.test` -> `npm ci && npm test`.
 3. If `pyproject.toml` or `requirements.txt` exists, look for test commands (e.g., `pytest`) and dependencies. Example: `python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt && pytest -q`.
@@ -10,30 +11,36 @@
 5. Inspect `.github/workflows` for CI steps to mirror local verification steps (lint, build, test, release).
 
 ## Architecture & component discovery
+
 - Look for top-level directories that indicate boundaries: `cmd/`, `pkg/`, `services/`, `api/`, `ui/`, `server/`, `client/`, `tests/`, `scripts/`.
 - Open entry points: for Node: `src/index.js` / `src/app.js`; for Python: `src/__main__.py` or package `__init__.py`; for Go: `cmd/*`.
 - If a `Dockerfile` or `docker-compose.yml` exists, use it to infer runtime dependencies, ports, and healthchecks.
 - If multiple services exist (monorepo), note communication patterns (HTTP, gRPC, message queues) by scanning for libraries: `express`, `fastapi`, `grpc`, `kafka`, `rabbitmq`, etc.
 
 ## Project-specific conventions to check (examples)
+
 - Build and test commands are authoritative if present in `package.json`/`pyproject`/`Makefile` — prefer them over ad-hoc commands.
 - Linting and formatting: search for `eslint`, `prettier`, `black`, `ruff`, and prefer project config (e.g., `.eslintrc`, `pyproject.toml`) when making edits.
 - Commit style / branch rules: check `CONTRIBUTING.md`, `README.md`, `.github/*` for release/versioning conventions.
 
 ## Integration & external dependencies
+
 - Look for external config: `.env`, `.env.example`, `values.yaml`, `secrets/*.enc` — prefer not to commit secrets; ask the human if secrets or credentials are needed.
 - If SDKs or external services are present (AWS, GCP, Azure, Sentry, Datadog), config is likely under `infra/`, `ops/`, or in workflow files — document endpoints and credentials holes and ask for access.
 
 ## How to change code safely
+
 - Start with local reproducible build/test loop (use `Makefile` or `scripts` if present). If no tests exist, add minimal unit tests that demonstrate behavior changes; prefer small, focused tests.
 - When changing behavior that affects multiple components, run integration steps (e.g., `docker-compose up` or start dev services) if the repo contains those artifacts.
 - Keep pull request diffs focused: one logical change per PR, update or add tests + update changelog if present.
 
 ## PR and commit guidance
+
 - Use existing test commands and CI steps as checklist before proposing changes.
 - Include concise PR description: problem, change, verification steps, and which files to review.
 
 ## If repository is empty or missing expected files
+
 1. Ask the maintainer for the intended language, package manager, and how to run tests locally.
 2. Propose a minimal `README.md`, `Makefile`, test harness, and a CI workflow stub (`.github/workflows/ci.yml`) to define the project's basic developer loop.
 
@@ -50,6 +57,7 @@ This repository contains prototypes to monitor DualShock 4 input events and visu
 - `package.json` and `python/requirements.txt` — install and runtime commands; prefer using the project's `scripts` (e.g., `npm start`).
 
 Project-specific tips:
+
 - Prefer using `SIMULATE=1` during initial development to avoid HID permission issues on macOS; the daemons emit consistent `button` and `axis` JSON messages that the UI expects.
 - The repo includes two mapping helpers:
   - `server/mapper.js` / `python/mapper.py` — print byte diffs for manual inspection (useful when pressing a button and watching which bytes change).

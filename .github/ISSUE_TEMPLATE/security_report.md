@@ -4,7 +4,6 @@ about: Report a security vulnerability privately to the maintainers
 title: '[SECURITY] '
 labels: security
 assignees: ''
-
 ---
 
 **Do NOT include sensitive data in public issues.**

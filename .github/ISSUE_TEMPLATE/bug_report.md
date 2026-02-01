@@ -11,6 +11,7 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior:
+
 1. Go to '...'
 2. Click on '....'
 3. See error
@@ -22,9 +23,10 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots or terminal logs to help explain your problem.
 
 **Environment (please complete the following information):**
- - OS: [e.g. macOS 13.5]
- - Node version: [e.g. 18.16.0]
- - SIMULATE: [true/false]
+
+- OS: [e.g. macOS 13.5]
+- Node version: [e.g. 18.16.0]
+- SIMULATE: [true/false]
 
 **Additional context**
 Add any other context about the problem here.

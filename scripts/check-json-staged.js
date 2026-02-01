@@ -2,7 +2,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 
-const files = process.argv.slice(2).filter(f => f.endsWith('.json'));
+const files = process.argv.slice(2).filter((f) => f.endsWith('.json'));
 if (!files.length) {
   console.log('No JSON files to check.');
   process.exit(0);
