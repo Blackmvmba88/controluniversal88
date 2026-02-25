@@ -5,6 +5,8 @@ const path = require('path');
 const daemon = require('./daemon');
 const logger = require('./logger');
 const core = require('./auto_map_core');
+const validation = require('./validation');
+const middleware = require('./middleware');
 const fs = require('fs');
 
 const app = express();
@@ -14,23 +16,33 @@ const PORT = process.env.PORT || 8080;
 
 if (process.env.LOG_LEVEL) logger.setLevel(process.env.LOG_LEVEL);
 
+// Aplicar middlewares globales
+app.use(middleware.requestLogger());
 app.use(express.static(path.join(__dirname, '..', 'web')));
+app.use('/docs', express.static(path.join(__dirname, '..', 'docs')));
 
 // Simple status API used by calibration UI and CLI
 app.get('/api/status', (req, res) => {
-  try {
-    res.json(daemon.getStatus());
-  } catch (e) {
-    res.status(500).json({ error: String(e) });
+  try { 
+    const status = daemon.getStatus();
+    // Validar que el status tiene la estructura esperada
+    if (!status || typeof status !== 'object') {
+      throw new Error('Invalid status structure from daemon');
+    }
+    res.json(status); 
+  } catch (e) { 
+    logger.error('Error getting status:', e.message);
+    res.status(500).json({ error: String(e.message || e) }); 
   }
 });
 
-app.post('/api/save-map', express.json(), (req, res) => {
-  try {
-    daemon.saveMapping(req.body);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: String(e) });
+app.post('/api/save-map', express.json(), validation.validateMappingBody(), (req, res) => {
+  try { 
+    daemon.saveMapping(req.body); 
+    res.json({ ok: true }); 
+  } catch (e) { 
+    logger.error('Error saving mapping:', e.message);
+    res.status(500).json({ error: String(e.message || e) }); 
   }
 });
 
@@ -38,13 +50,23 @@ app.post('/api/save-map', express.json(), (req, res) => {
 const collectLib = require('./collect_lib');
 let currentJob = null;
 
-app.post('/api/collect/start', express.json(), async (req, res) => {
-  const label = req.body && req.body.label;
-  const count = (req.body && Number(req.body.count)) || 3;
-  const save = !!(req.body && req.body.save);
-  if (!label) return res.status(400).json({ error: 'label required' });
-  if (currentJob && currentJob.status === 'running')
+// Aplicar rate limiting a endpoints de colección (más estricto)
+const collectRateLimit = middleware.rateLimiter({ 
+  windowMs: 60000, // 1 minuto
+  maxRequests: 20   // Máximo 20 requests por minuto
+});
+
+app.post('/api/collect/start', express.json(), collectRateLimit, async (req, res) => {
+  // Validar y sanitizar parámetros
+  const paramValidation = validation.validateAndSanitizeCollectParams(req.body || {});
+  if (!paramValidation.valid) {
+    return res.status(400).json({ error: 'Validation failed', details: paramValidation.errors });
+  }
+  
+  const { label, count, save } = paramValidation.sanitized;
+  if (currentJob && currentJob.status === 'running') {
     return res.status(409).json({ error: 'job running' });
+  }
   currentJob = { status: 'running', label, count, progress: [], result: null };
   // run in background
   (async () => {
@@ -219,30 +241,19 @@ app.get('/api/collect/status', (req, res) => {
   res.json(currentJob || { status: 'idle' });
 });
 
-app.post('/api/collect/auto', express.json(), async (req, res) => {
-  const buttons = [
-    'square',
-    'cross',
-    'circle',
-    'triangle',
-    'l1',
-    'r1',
-    'l2_btn',
-    'r2_btn',
-    'share',
-    'options',
-    'lstick',
-    'rstick',
-    'ps',
-    'dpad_up',
-    'dpad_right',
-    'dpad_down',
-    'dpad_left',
-  ];
-  const per = (req.body && Number(req.body.count)) || 2;
-  const saveMapping = !!(req.body && req.body.save);
-  if (currentJob && currentJob.status === 'running')
+app.post('/api/collect/auto', express.json(), collectRateLimit, async (req, res) => {
+  const buttons = ['square','cross','circle','triangle','l1','r1','l2_btn','r2_btn','share','options','lstick','rstick','ps','dpad_up','dpad_right','dpad_down','dpad_left'];
+  
+  // Validar parámetros
+  const per = req.body && req.body.count !== undefined ? Number(req.body.count) : 2;
+  if (!validation.isNumberInRange(per, 1, 20)) {
+    return res.status(400).json({ error: 'count debe ser un número entre 1 y 20' });
+  }
+  
+  const saveMapping = validation.toBoolean(req.body && req.body.save, false);
+  if (currentJob && currentJob.status === 'running') {
     return res.status(409).json({ error: 'job running' });
+  }
   currentJob = { status: 'running', label: 'auto', count: per, progress: [], result: null };
   (async () => {
     const aggregated = [];
@@ -310,50 +321,53 @@ app.post('/api/collect/auto', express.json(), async (req, res) => {
 
 wss.on('connection', (ws) => {
   logger.info('WebSocket client connected');
-  try {
-    ws.send(JSON.stringify({ type: 'info', msg: 'connected' }));
-  } catch (e) {
-    /* ignore */
+  try { 
+    ws.send(JSON.stringify({ type: 'info', msg: 'connected' })); 
+  } catch (e) { 
+    logger.warn('Failed to send initial message to new client:', e.message);
   }
-
-  // Rebroadcast messages received from one client to all connected clients.
-  // This allows keyboard clients (web/client_keyboard.js) to send 'axis' and 'button'
-  // messages which are then reflected in monitor UIs.
-  ws.on('message', (data) => {
-    try {
-      const msg = JSON.parse(data);
-      logger.info('WS recv', msg && msg.type ? msg.type : 'unknown');
-      if (msg && typeof msg.type === 'string') {
-        broadcast(msg);
-      }
-    } catch (e) {
-      logger.warn('WS parse failed', String(e));
-    }
-  });
 });
 
 function broadcast(msg) {
-  let data;
-  try {
-    data = JSON.stringify(msg);
-  } catch (e) {
-    console.error('Failed to serialize message', e);
+  // Validar mensaje
+  if (!msg || typeof msg !== 'object') {
+    logger.error('Attempt to broadcast invalid message');
     return;
   }
-  logger.info('Broadcasting', msg && msg.type ? msg.type : 'unknown');
-  const toRemove = [];
-  wss.clients.forEach((c) => {
+  
+  let data;
+  try { 
+    data = JSON.stringify(msg); 
+  } catch (e) { 
+    logger.error('Failed to serialize message:', e.message); 
+    return; 
+  }
+  
+  // Contador de clientes activos para logging
+  let activeClients = 0;
+  let failedClients = 0;
+  
+  wss.clients.forEach(c => {
     if (c.readyState === WebSocket.OPEN) {
-      try {
-        c.send(data);
-      } catch (e) {
-        logger.warn('Client send failed, closing client', String(e));
-        try {
-          c.terminate();
-        } catch (_) {}
+      try { 
+        c.send(data); 
+        activeClients++;
+      } catch (e) { 
+        logger.warn('Client send failed:', e.message); 
+        failedClients++;
+        try { 
+          c.terminate(); 
+        } catch(terminateErr){
+          logger.debug('Failed to terminate dead client:', terminateErr.message);
+        }
       }
     }
   });
+  
+  // Log solo si hay debug habilitado para evitar spam
+  if (logger.debug && failedClients > 0) {
+    logger.debug(`Broadcast: ${activeClients} successful, ${failedClients} failed`);
+  }
 }
 
 // Start daemon explicitly (constructor no longer auto-starts so tests can create instances)
@@ -369,5 +383,8 @@ daemon.on('input', (ev) => {
 });
 
 server.listen(PORT, () => logger.info(`Server listening on http://localhost:${PORT}`));
+
+// Aplicar middleware de manejo de errores (debe ir al final)
+app.use(middleware.errorHandler());
 
 process.on('SIGINT', () => process.exit());
