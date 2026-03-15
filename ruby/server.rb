@@ -5,7 +5,7 @@ require 'sinatra'
 require 'sinatra/json'
 require 'faye/websocket'
 require 'json'
-# Note: ryby gem is included in Gemfile - it's a Russian data generator similar to Faker
+require_relative 'daemon'
 
 # Configuration
 set :port, ENV.fetch('PORT', 8080)
@@ -15,6 +15,7 @@ set :server, 'puma'
 
 # WebSocket clients
 CLIENTS = []
+DAEMON = Daemon.new
 
 # Serve static files
 get '/' do
@@ -23,12 +24,7 @@ end
 
 # Status endpoint
 get '/api/status' do
-  json({
-    status: 'ok',
-    ruby_version: RUBY_VERSION,
-    ryby_gem: 'loaded',
-    simulate: ENV['SIMULATE'] == '1'
-  })
+  json(DAEMON.get_status.merge(wow_factor: 'active'))
 end
 
 # WebSocket endpoint
@@ -41,17 +37,11 @@ get '/ws' do
       puts "WebSocket client connected (total: #{CLIENTS.length})"
     end
     
-    ws.on :message do |event|
-      # Echo or handle messages if needed
-      puts "Received: #{event.data}"
-    end
-    
     ws.on :close do |_event|
       CLIENTS.delete(ws)
       puts "WebSocket client disconnected (total: #{CLIENTS.length})"
     end
     
-    # Return async Rack response
     ws.rack_response
   else
     status 400
@@ -66,28 +56,17 @@ def broadcast(message)
     begin
       client.send(data)
     rescue => e
-      puts "Error broadcasting to client: #{e.message}"
       CLIENTS.delete(client)
     end
   end
 end
 
-# Simulation mode
-if ENV['SIMULATE'] == '1'
-  Thread.new do
-    loop do
-      sleep 2
-      broadcast({
-        type: 'button',
-        id: 'cross',
-        value: rand(0..1),
-        timestamp: Time.now.to_i
-      })
-    end
-  end
+# Start the Command-Triggering Daemon
+DAEMON.start do |event|
+  broadcast(event)
 end
 
 # Start message
-puts "Ruby ControlUniversal server with ryby gem"
+puts "🚀 Ruby 'Wow Factor' server — Command Trigger Engine"
 puts "Listening on http://0.0.0.0:#{settings.port}"
-puts "Simulation mode: #{ENV['SIMULATE'] == '1' ? 'ON' : 'OFF'}"
+puts "SIMULATION: ON | COMMANDS: macOS enabled (say, open)"

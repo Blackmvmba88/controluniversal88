@@ -2,24 +2,37 @@
 # frozen_string_literal: true
 
 require 'json'
-# Note: ryby gem is included in Gemfile - it's a Russian data generator similar to Faker
 
-# DualShock 4 Controller Daemon for Ruby
+# ControlUniversal Ruby Daemon - The "Wow Factor" Edition
+# Transform your DualShock 4 into a system-wide macro controller.
 class Daemon
+  attr_accessor :command_map
+
   def initialize
     @simulate = ENV['SIMULATE'] == '1'
     @running = false
-    puts "Daemon initialized (simulate: #{@simulate})"
+    # Mapeo de "Wow Factor": Botón -> Comando de macOS
+    @command_map = {
+      'triangle' => 'say "System override engaged. Hello Iyari."',
+      'circle'   => 'open https://github.com/Blackmvmba88/controluniversal88',
+      'square'   => 'open -a Calculator',
+      'ps'       => 'say "Control Universal is alive"'
+    }
+    puts "🚀 Wow Factor Daemon initialized (darwin mode)"
   end
 
   def start(&block)
     @running = true
     @callback = block
 
+    puts "🎮 Monitoring inputs..."
     if @simulate
       simulate_input
     else
-      read_device
+      # Aquí iría la conexión real con ffi-hidapi
+      puts "⚠️ Real HID hardware requires 'ffi-hidapi' gem."
+      puts "Falling back to simulation for safety..."
+      simulate_input
     end
   end
 
@@ -27,59 +40,43 @@ class Daemon
     @running = false
   end
 
-  def get_status
-    {
-      running: @running,
-      simulate: @simulate,
-      ruby_version: RUBY_VERSION,
-      ryby_gem: 'loaded'
-    }
-  end
-
   private
 
   def simulate_input
     Thread.new do
-      buttons = %w[cross circle square triangle l1 r1 l2 r2 dpad_up dpad_down dpad_left dpad_right]
-      
+      buttons = %w[cross circle square triangle l1 r1 ps]
       while @running
-        sleep 0.5
+        sleep (2 + rand(5)) # No queremos que sea un caos, cada 2-7 segundos
         
-        # Simulate random button press
-        button = buttons.sample
-        @callback&.call({
+        btn = buttons.sample
+        val = 1 # Simulamos el press
+        
+        event = {
           type: 'button',
-          id: button,
-          value: rand(0..1),
-          timestamp: Time.now.to_i
-        })
+          id: btn,
+          value: val,
+          timestamp: Time.now.to_i,
+          origin: 'ruby-engine'
+        }
 
-        # Simulate analog stick movement
-        @callback&.call({
-          type: 'axis',
-          id: 'left_stick_x',
-          value: rand(-1.0..1.0).round(3),
-          timestamp: Time.now.to_i
-        })
+        # El Wow Factor: Ejecutar comando si existe en el mapa
+        if @command_map[btn]
+          puts "🔥 TRIGERED: Button #{btn} executing: #{@command_map[btn]}"
+          system(@command_map[btn]) # <--- AQUÍ PASA LA MAGIA
+        end
+
+        @callback&.call(event)
+        
+        # Simular liberación rápido
+        sleep 0.2
+        @callback&.call(event.merge(value: 0))
       end
     end
   end
-
-  def read_device
-    # Placeholder for actual HID device reading
-    # This would use an HID library (like libusb or hid_api) to read from the controller
-    puts "Reading from actual device not yet implemented"
-    puts "Use SIMULATE=1 for testing"
-  end
 end
 
-# Run directly if executed as script
 if __FILE__ == $PROGRAM_NAME
   daemon = Daemon.new
-  daemon.start do |event|
-    puts JSON.pretty_generate(event)
-  end
-  
-  # Keep running
-  sleep while daemon.get_status[:running]
+  daemon.start { |e| puts "Event: #{e[:id]} = #{e[:value]}" }
+  sleep
 end
