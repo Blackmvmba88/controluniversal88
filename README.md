@@ -80,7 +80,46 @@ Diagnose controller hardware issues without disassembly. Detect anomalous patter
 
 ---
 
-## Project Status (Radical Honesty Mode)
+## 🖼 Screenshots & Visuals
+
+| Controller State | Mapping UI | Dashboard |
+| :--- | :--- | :--- |
+| ![Controller](docs/controller_main.png) | ![Mapping](docs/mapping_interface.png) | ![Dashboard](docs/live_dashboard.png) |
+
+> **Tip**: Run `npm start` and visit `http://localhost:8080` to see the live SVG interface.
+
+---
+
+## 🗺 Roadmap & Epic Tasks
+
+The evolution of **ControlUniversal** follows a three-stage trajectory toward becoming the universal standard for HID visualization.
+
+### 🔴 Phase 1: Foundation (Current - Stable)
+- [x] **DS4 Protocol Support**: Full button and axis mapping for DualShock 4.
+- [x] **Cross-Platform Backend**: Node.js, Python, and Ruby support.
+- [x] **WebSocket Bridge**: Real-time event streaming.
+- [x] **Interactive Auto-Mapper**: Consensus-based button detection.
+- [x] **Visual UI**: SVG-based real-time visualization.
+
+### 🟡 Phase 2: Expansion (Q2 2026 - In Progress)
+- [ ] **DualSense Support**: Map PS5-specific HID reports (haptics, adaptive triggers).
+- [ ] **Xbox Controller Integration**: Support XInput via protocol wrapper.
+- [ ] **Multi-Controller Mode**: Simultaneous 4-player visualization.
+- [ ] **Historical Recording**: Capture sessions and replay input for debugging or training.
+- [ ] **Themes & Customization**: Dark/Light modes and colorblind-friendly palettes.
+
+### 🔵 Phase 3: Intelligence (Q4 2026 - Planned)
+- [ ] **Diagnostic Engine**: AI-driven detection of hardware failures (drift, ghosting).
+- [ ] **MIDI/OSC Bridge**: Native integration with Ableton, Bitwig, and DAWs.
+- [ ] **Browser Extension**: Inject controller overlay into any web application.
+- [ ] **Accessibility SDK**: Mapping tools for custom adaptive controllers.
+
+---
+
+## 📦 Releases
+
+Check the [Releases](https://github.com/Blackmvmba88/controluniversal88/releases) page for the latest stable builds and changelogs.
+- **v0.1.0**: Initial stable release with verified tests and auto-mapping.
 
 ### ✅ **What Works Right Now**
 
