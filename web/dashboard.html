@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ControlUniversal — Global Dashboard</title>
+    <style>
+        :root {
+            --node-color: #68a063;
+            --python-color: #3776ab;
+            --ruby-color: #cc342d;
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            width: 90%;
+            padding: 40px 0;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        h1 {
+            font-size: 3rem;
+            margin: 0;
+            background: linear-gradient(90deg, var(--node-color), var(--python-color), var(--ruby-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid #334155;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+        }
+        .node-card::before { background-color: var(--node-color); }
+        .python-card::before { background-color: var(--python-color); }
+        .ruby-card::before { background-color: var(--ruby-color); }
+
+        h2 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        .status { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; background: #334155; color: #94a3b8; }
+        .status.active { background: #064e3b; color: #34d399; }
+
+        p { color: #cbd5e1; line-height: 1.6; }
+        .features { margin: 20px 0; padding: 0; list-style: none; }
+        .features li { margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+        .features li::before { content: '→'; color: #64748b; }
+
+        .btn-launch {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            text-align: center;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: filter 0.2s;
+            margin-top: 20px;
+            box-sizing: border-box;
+        }
+        .btn-node { background-color: var(--node-color); color: #fff; }
+        .btn-python { background-color: var(--python-color); color: #fff; }
+        .btn-ruby { background-color: var(--ruby-color); color: #fff; }
+        .btn-launch:hover { filter: brightness(1.2); }
+
+        footer {
+            margin-top: auto;
+            padding: 40px;
+            color: #475569;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .trinity-status {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px;
+            background: #1e293b;
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: 1px solid #334155;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #475569; }
+        .dot.online { background: #10b981; box-shadow: 0 0 10px #10b981; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ControlUniversal</h1>
+            <div class="subtitle">Unified Input Trinity — Physical → Digital → Commands</div>
+            
+            <center>
+                <div class="trinity-status">
+                    <div><span class="dot online"></span> Node.js</div>
+                    <div><span class="dot"></span> Python</div>
+                    <div><span class="dot online"></span> Ruby (Wow Factor)</div>
+                </div>
+            </center>
+        </header>
+
+        <div class="grid">
+            <!-- NODE.JS -->
+            <div class="card node-card">
+                <h2>Node.js Engine <span class="status active">Primary</span></h2>
+                <p>The core powerhouse. Handles raw HID communication and complex calibration.</p>
+                <ul class="features">
+                    <li>Real Hardware (USB/BT)</li>
+                    <li>Advanced Calibration UI</li>
+                    <li>Auto-Mapping Algorithms</li>
+                </ul>
+                <a href="index.html" class="btn-launch btn-node">Launch Monitor</a>
+            </div>
+
+            <!-- PYTHON -->
+            <div class="card python-card">
+                <h2>Python Engine <span class="status">Scalable</span></h2>
+                <p>Optimized for data science and AI integration. Lightweight and fast FastAPI backend.</p>
+                <ul class="features">
+                    <li>FastAPI Implementation</li>
+                    <li>AI Data Ready</li>
+                    <li>HIDAPI Compatible</li>
+                </ul>
+                <a href="index.html" class="btn-launch btn-python">Launch Monitor</a>
+            </div>
+
+            <!-- RUBY -->
+            <div class="card ruby-card">
+                <h2>Ruby Engine <span class="status active">Wow Factor</span></h2>
+                <p>The "Automator". Transform your controller into a system-wide macro engine for macOS.</p>
+                <ul class="features">
+                    <li>macOS Voice (SAY) Commands</li>
+                    <li>System Macro Execution</li>
+                    <li>Elegant Sinatra Backend</li>
+                </ul>
+                <a href="index.html" class="btn-launch btn-ruby">Launch Automator</a>
+            </div>
+        </div>
+
+        <footer>
+            <strong>IYARI CANCINO GOMEZ &copy; 2026</strong><br>
+            Project ControlUniversal v0.1.0 — Advanced Agentic Engineering
+        </footer>
+    </div>
+
+    <script>
+        // Futura lógica para detectar automáticamente qué servidores están corriendo
+        console.log("Trinity Dashboard Initialized. Welcome Iyari.");
+    </script>
+</body>
+</html>
