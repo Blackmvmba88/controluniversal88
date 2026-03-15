@@ -1,0 +1,37 @@
+name: Vault Rotate NGROK Token
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'New ngrok token'
+        required: true
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install Vault CLI
+        run: |
+          # This step assumes apt & supports installing vault (Linux runners)
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+          sudo apt-add-repository "deb [trusted=yes] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+          sudo apt-get update && sudo apt-get install vault -y
+      - name: Rotate token into Vault and GitHub
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Write to Vault (path must be set up in your Vault instance)
+          vault kv put secret/control-universal/ngrok token=${{ github.event.inputs.token }}
+          # Read back to confirm
+          vault kv get -format=json secret/control-universal/ngrok || true
+          # Update GitHub secret with new token using gh CLI (requires gh auth setup in environment)
+          echo "${{ github.event.inputs.token }}" | gh secret set NGROK_AUTH_TOKEN --repo $GITHUB_REPO --body -
+        # NOTE: This workflow requires repo admin permission for secrets and Vault setup. Use with care.
