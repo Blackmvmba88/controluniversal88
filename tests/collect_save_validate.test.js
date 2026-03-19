@@ -1,6 +1,7 @@
 const collectLib = require('../server/collect_lib');
 const fs = require('fs');
 const http = require('http');
+const { getBaseUrl, getHttpRequestOptions } = require('./test_urls');
 
 async function testCollectLibValidation() {
   // remove sample file to make test deterministic
@@ -23,10 +24,7 @@ function postAuto(count, save) {
     const data = JSON.stringify({ count, save });
     const req = http.request(
       {
-        method: 'POST',
-        host: 'localhost',
-        port: 8080,
-        path: '/api/collect/auto',
+        ...getHttpRequestOptions('/api/collect/auto', 'POST'),
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
       },
       (res) => {
@@ -44,7 +42,7 @@ function postAuto(count, save) {
 function getStatus() {
   return new Promise((resolve, reject) => {
     http
-      .get('http://localhost:8080/api/collect/status', (res) => {
+      .get(`${getBaseUrl()}/api/collect/status`, (res) => {
         let b = '';
         res.on('data', (d) => (b += d));
         res.on('end', () => {

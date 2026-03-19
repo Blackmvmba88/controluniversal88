@@ -1,8 +1,9 @@
 const WebSocket = require('ws');
+const { getServerUrl } = require('./test_urls');
 
 function testWsBroadcast() {
   return new Promise((resolve, reject) => {
-    const url = process.env.SERVER_URL || 'ws://localhost:8080';
+    const url = getServerUrl();
     const c1 = new WebSocket(url);
     const c2 = new WebSocket(url);
     let ready = 0;

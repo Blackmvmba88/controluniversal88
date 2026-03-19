@@ -15,6 +15,9 @@ function cleanDist({ dryRun = false } = {}) {
       if (!fs.existsSync(metaPath)) {
         if (!dryRun) {
           fs.unlinkSync(path.join(d, f));
+          try {
+            fs.unlinkSync(path.join(d, `${f}.token.json`));
+          } catch (e) {}
           cleaned++;
         }
         continue;
@@ -25,6 +28,9 @@ function cleanDist({ dryRun = false } = {}) {
           fs.unlinkSync(path.join(d, f));
           try {
             fs.unlinkSync(metaPath);
+          } catch (e) {}
+          try {
+            fs.unlinkSync(path.join(d, `${f}.token.json`));
           } catch (e) {}
           cleaned++;
         }

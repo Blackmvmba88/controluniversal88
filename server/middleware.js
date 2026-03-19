@@ -32,7 +32,8 @@ function cleanupOldEntries() {
 }
 
 // Iniciar limpieza periódica
-setInterval(cleanupOldEntries, CLEANUP_INTERVAL);
+const cleanupTimer = setInterval(cleanupOldEntries, CLEANUP_INTERVAL);
+if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
 
 /**
  * Middleware de rate limiting simple
@@ -71,6 +72,7 @@ function rateLimiter(options = {}) {
     // Verificar si excedió el límite
     if (record.count > maxRequests) {
       logger.warn(`Rate limit exceeded for IP: ${ip}`);
+      res.setHeader('Retry-After', Math.ceil((record.resetTime + windowMs - now) / 1000));
       return res.status(429).json({
         error: 'Too many requests',
         retryAfter: Math.ceil((record.resetTime + windowMs - now) / 1000),
@@ -79,7 +81,7 @@ function rateLimiter(options = {}) {
 
     // Agregar headers informativos
     res.setHeader('X-RateLimit-Limit', maxRequests);
-    res.setHeader('X-RateLimit-Remaining', maxRequests - record.count);
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, maxRequests - record.count));
     res.setHeader('X-RateLimit-Reset', new Date(record.resetTime + windowMs).toISOString());
 
     next();
@@ -99,14 +101,13 @@ function requestLogger() {
     const startTime = Date.now();
     const { method, url, ip } = req;
     const clientIp = ip || req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown';
-
-    // Interceptar el método res.json para capturar el status code
-    const originalJson = res.json.bind(res);
-    res.json = function (data) {
+    let logged = false;
+    const logOnce = () => {
+      if (logged) return;
+      logged = true;
       const duration = Date.now() - startTime;
       const statusCode = res.statusCode;
 
-      // Log según el nivel de severidad del status code
       if (statusCode >= 500) {
         logger.error(`${method} ${url} ${statusCode} ${duration}ms [${clientIp}]`);
       } else if (statusCode >= 400) {
@@ -114,26 +115,10 @@ function requestLogger() {
       } else {
         logger.info(`${method} ${url} ${statusCode} ${duration}ms [${clientIp}]`);
       }
-
-      return originalJson(data);
     };
 
-    // También interceptar res.send para requests que no usan json
-    const originalSend = res.send.bind(res);
-    res.send = function (data) {
-      const duration = Date.now() - startTime;
-      const statusCode = res.statusCode;
-
-      if (statusCode >= 500) {
-        logger.error(`${method} ${url} ${statusCode} ${duration}ms [${clientIp}]`);
-      } else if (statusCode >= 400) {
-        logger.warn(`${method} ${url} ${statusCode} ${duration}ms [${clientIp}]`);
-      } else {
-        logger.debug(`${method} ${url} ${statusCode} ${duration}ms [${clientIp}]`);
-      }
-
-      return originalSend(data);
-    };
+    res.once('finish', logOnce);
+    res.once('close', logOnce);
 
     next();
   };

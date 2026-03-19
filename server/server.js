@@ -7,6 +7,7 @@ const logger = require('./logger');
 const core = require('./auto_map_core');
 const validation = require('./validation');
 const middleware = require('./middleware');
+const bookmarklet = require('./bookmarklet');
 const fs = require('fs');
 
 const app = express();
@@ -97,31 +98,23 @@ app.post('/api/collect/start', express.json(), collectRateLimit, async (req, res
 app.post('/api/bookmarklet', express.json(), (req, res) => {
   try {
     const url = (req.body && req.body.url) || req.query.url || process.env.TUNNEL_URL || null;
-    if (!url) return res.status(400).json({ error: 'url required' });
-    // basic validation
-    if (!/^https?:\/\//.test(url) && !/^wss?:\/\//.test(url))
-      return res.status(400).json({ error: 'invalid url' });
-    // host for loading the bookmarklet script
-    const host = url
-      .replace(/^https?:\/\//, '')
-      .replace(/^wss?:\/\//, '')
-      .replace(/\/$/, '');
-    const bookmarklet = `javascript:(function(){var s=document.createElement('script');s.src='https://${host}/bookmarklet.js';document.head.appendChild(s);setTimeout(function(){connectToController('${url}')},200);})();`;
+    const normalizedUrl = bookmarklet.normalizeConnectionUrl(url);
+    const snippet = bookmarklet.buildBookmarklet(normalizedUrl);
 
     // Persist as short-lived file in dist with SHA and expiry (24h)
     try {
-      const fs = require('fs');
       const crypto = require('crypto');
-      fs.mkdirSync('dist', { recursive: true });
-      const sha = crypto.createHash('sha256').update(bookmarklet).digest('hex').slice(0, 12);
+      const distDir = path.join(process.cwd(), 'dist');
+      fs.mkdirSync(distDir, { recursive: true });
+      const sha = crypto.createHash('sha256').update(snippet).digest('hex').slice(0, 12);
       const expires = Date.now() + 24 * 60 * 60 * 1000; // 24h
-      const filename = `bookmarklet_${sha}.txt`;
+      const paths = bookmarklet.artifactPaths(distDir, sha);
       const meta = { url, sha, expires };
-      fs.writeFileSync(require('path').join('dist', filename), bookmarklet);
-      fs.writeFileSync(require('path').join('dist', `${filename}.meta.json`), JSON.stringify(meta));
-      const fileUrl = `${req.protocol}://${req.get('host')}/dist/${filename}`;
+      fs.writeFileSync(paths.filePath, snippet);
+      fs.writeFileSync(paths.metaPath, JSON.stringify(meta));
+      const fileUrl = `${req.protocol}://${req.get('host')}/dist/${paths.filename}`;
       // create a short access token (uuid-lite)
-      const token = require('crypto').randomBytes(6).toString('hex');
+      const token = crypto.randomBytes(6).toString('hex');
       // accept optional pr and author from CI to restrict token to PR author (for auditing)
       const pr = (req.body && req.body.pr) || (req.query && req.query.pr) || null;
       const author = (req.body && req.body.author) || (req.query && req.query.author) || null;
@@ -133,12 +126,12 @@ app.post('/api/bookmarklet', express.json(), (req, res) => {
       const expiresFinal = Date.now() + Number(ttlHours) * 60 * 60 * 1000;
       const tokenMeta = { sha, token, expires: expiresFinal, pr, author };
       // store token meta file for validation
-      fs.writeFileSync(path.join('dist', `${filename}.token.json`), JSON.stringify(tokenMeta));
+      fs.writeFileSync(paths.tokenPath, JSON.stringify(tokenMeta));
 
       res.json({
         ok: true,
-        url,
-        bookmarklet,
+        url: normalizedUrl,
+        bookmarklet: snippet,
         fileUrl: `${fileUrl}?token=${token}`,
         sha,
         expires: expiresFinal,
@@ -148,10 +141,10 @@ app.post('/api/bookmarklet', express.json(), (req, res) => {
       });
     } catch (e) {
       console.warn('Failed to persist bookmarklet', e);
-      res.json({ ok: true, url, bookmarklet });
+      res.json({ ok: true, url: normalizedUrl, bookmarklet: snippet });
     }
   } catch (e) {
-    res.status(500).json({ error: String(e) });
+    res.status(400).json({ error: String(e.message || e) });
   }
 });
 
@@ -163,13 +156,13 @@ app.get('/dist/:file', (req, res, next) => {
     const token = req.query.token;
     if (!token) return res.status(403).send('token required');
     const sha = file.slice('bookmarklet_'.length, -'.txt'.length);
-    const metaPath = path.join(process.cwd(), 'dist', `bookmarklet_${sha}.txt.token.json`);
-    if (!fs.existsSync(metaPath)) return res.status(404).send('not found');
-    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    const paths = bookmarklet.artifactPaths(path.join(process.cwd(), 'dist'), sha);
+    if (!fs.existsSync(paths.tokenPath)) return res.status(404).send('not found');
+    const meta = JSON.parse(fs.readFileSync(paths.tokenPath, 'utf8'));
     if (meta.token !== token) return res.status(403).send('invalid token');
     if (Date.now() > meta.expires) return res.status(410).send('expired');
     // serve file
-    return res.sendFile(path.join(process.cwd(), 'dist', file));
+    return res.sendFile(paths.filePath);
   } catch (e) {
     console.warn('dist serve err', e);
     return res.status(500).send('err');
@@ -181,9 +174,9 @@ app.get('/api/bookmarklet/status', (req, res) => {
   const sha = req.query.sha;
   if (!sha) return res.status(400).json({ error: 'sha required' });
   try {
-    const p = require('path').join(process.cwd(), 'dist', `bookmarklet_${sha}.txt.meta.json`);
-    if (!require('fs').existsSync(p)) return res.status(404).json({ error: 'not found' });
-    const m = JSON.parse(require('fs').readFileSync(p, 'utf8'));
+    const paths = bookmarklet.artifactPaths(path.join(process.cwd(), 'dist'), sha);
+    if (!fs.existsSync(paths.metaPath)) return res.status(404).json({ error: 'not found' });
+    const m = JSON.parse(fs.readFileSync(paths.metaPath, 'utf8'));
     // check expiry
     if (Date.now() > m.expires) return res.status(410).json({ error: 'expired' });
     res.json({ ok: true, meta: m });
@@ -198,9 +191,9 @@ app.get('/api/bookmarklet/verify', (req, res) => {
   const token = req.query.token;
   if (!sha || !token) return res.status(400).json({ error: 'sha and token required' });
   try {
-    const p = require('path').join(process.cwd(), 'dist', `bookmarklet_${sha}.txt.token.json`);
-    if (!require('fs').existsSync(p)) return res.status(404).json({ error: 'not found' });
-    const meta = JSON.parse(require('fs').readFileSync(p, 'utf8'));
+    const paths = bookmarklet.artifactPaths(path.join(process.cwd(), 'dist'), sha);
+    if (!fs.existsSync(paths.tokenPath)) return res.status(404).json({ error: 'not found' });
+    const meta = JSON.parse(fs.readFileSync(paths.tokenPath, 'utf8'));
     if (meta.token !== token) return res.status(403).json({ error: 'invalid token' });
     if (Date.now() > meta.expires) return res.status(410).json({ error: 'expired' });
     res.json({ ok: true, meta: { pr: meta.pr, author: meta.author, expires: meta.expires } });
@@ -210,32 +203,45 @@ app.get('/api/bookmarklet/verify', (req, res) => {
 });
 
 app.get('/api/bookmarklet', (req, res) => {
-  const url = req.query.url || process.env.TUNNEL_URL || null;
-  if (!url) return res.status(400).json({ error: 'url required' });
-  const host = url
-    .replace(/^https?:\/\//, '')
-    .replace(/^wss?:\/\//, '')
-    .replace(/\/$/, '');
-  const bookmarklet = `javascript:(function(){var s=document.createElement('script');s.src='https://${host}/bookmarklet.js';document.head.appendChild(s);setTimeout(function(){connectToController('${url}')},200);})();`;
-  res.json({ ok: true, url, bookmarklet });
+  try {
+    const url = req.query.url || process.env.TUNNEL_URL || null;
+    const normalizedUrl = bookmarklet.normalizeConnectionUrl(url);
+    const snippet = bookmarklet.buildBookmarklet(normalizedUrl);
+    res.json({ ok: true, url: normalizedUrl, bookmarklet: snippet });
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
 });
 
 // Serve plain-text bookmarklet at /bookmarklet.txt?url=<encoded_url>
 app.get('/bookmarklet.txt', (req, res) => {
-  const url = req.query.url || process.env.TUNNEL_URL || null;
-  if (!url) return res.status(400).send('url required');
-  const host = url
-    .replace(/^https?:\/\//, '')
-    .replace(/^wss?:\/\//, '')
-    .replace(/\/$/, '');
-  const bookmarklet = `javascript:(function(){var s=document.createElement('script');s.src='https://${host}/bookmarklet.js';document.head.appendChild(s);setTimeout(function(){connectToController('${url}')},200);})();`;
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
-  res.send(bookmarklet);
+  try {
+    const url = req.query.url || process.env.TUNNEL_URL || null;
+    const snippet = bookmarklet.buildBookmarklet(url);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(snippet);
+  } catch (e) {
+    res.status(400).send(String(e.message || e));
+  }
 });
 
-// Serve dist folder (bookmarklet artifacts) as static if present
-app.use('/dist', express.static(path.join(__dirname, '..', 'dist')));
+// Serve dist folder (bookmarklet artifacts) as static if present, but keep metadata private.
+app.get('/dist/:file', (req, res, next) => {
+  const file = req.params.file || '';
+  if (file.endsWith('.token.json') || file.endsWith('.meta.json')) {
+    return res.status(404).send('not found');
+  }
+  next();
+});
+
+app.use(
+  '/dist',
+  express.static(path.join(__dirname, '..', 'dist'), {
+    fallthrough: true,
+    index: false,
+  })
+);
 
 app.get('/api/collect/status', (req, res) => {
   res.json(currentJob || { status: 'idle' });
@@ -344,6 +350,23 @@ wss.on('connection', (ws) => {
   } catch (e) {
     logger.warn('Failed to send initial message to new client:', e.message);
   }
+
+  ws.on('message', (raw) => {
+    try {
+      if (typeof raw !== 'string' && !Buffer.isBuffer(raw)) return;
+      const text = raw.toString();
+      if (text.length > 16 * 1024) {
+        logger.warn('Rejected oversized WebSocket message');
+        return;
+      }
+      const msg = JSON.parse(text);
+      if (!msg || typeof msg !== 'object' || Array.isArray(msg)) return;
+      if (typeof msg.type !== 'string' || msg.type.length === 0) return;
+      broadcast(msg);
+    } catch (e) {
+      logger.debug('Ignored non-JSON WebSocket message');
+    }
+  });
 });
 
 function broadcast(msg) {

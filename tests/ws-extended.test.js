@@ -1,33 +1,32 @@
 const WebSocket = require('ws');
-const serverUrl = process.env.SERVER_URL || 'ws://localhost:8080';
+const { getServerUrl } = require('./test_urls');
 
-(async () => {
-  const client = new WebSocket(serverUrl);
-  let seenButton = false;
-  client.on('open', () => console.log('connected'));
-  client.on('message', (m) => {
-    try {
-      const msg = JSON.parse(m.toString());
-      if (msg && msg.type === 'button') {
-        console.log('Got button', msg);
-        seenButton = true;
-        process.exit(0);
-      }
-      if (msg && msg.type === 'axis') {
-        console.log('Got axis', msg);
-        seenButton = true;
-        process.exit(0);
-      }
-    } catch (e) {}
+function testWsExtendedReceivesInputEvents() {
+  return new Promise((resolve, reject) => {
+    const client = new WebSocket(getServerUrl());
+    const timer = setTimeout(() => {
+      try {
+        client.terminate();
+      } catch (e) {}
+      reject(new Error('timeout waiting for button/axis'));
+    }, 8000);
+
+    client.on('message', (m) => {
+      try {
+        const msg = JSON.parse(m.toString());
+        if (msg && (msg.type === 'button' || msg.type === 'axis')) {
+          clearTimeout(timer);
+          client.close();
+          resolve();
+        }
+      } catch (e) {}
+    });
+
+    client.on('error', (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
   });
-  client.on('error', (e) => {
-    console.error('error', e);
-    process.exit(2);
-  });
-  setTimeout(() => {
-    if (!seenButton) {
-      console.error('timeout waiting for button/axis');
-      process.exit(3);
-    }
-  }, 8000);
-})();
+}
+
+module.exports = { testWsExtendedReceivesInputEvents };

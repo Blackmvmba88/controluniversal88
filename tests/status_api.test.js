@@ -1,9 +1,10 @@
 const http = require('http');
+const { getBaseUrl } = require('./test_urls');
 
 function testStatusApi() {
   return new Promise((resolve, reject) => {
     http
-      .get('http://localhost:8080/api/status', (res) => {
+      .get(`${getBaseUrl()}/api/status`, (res) => {
         let body = '';
         res.on('data', (d) => (body += d));
         res.on('end', () => {

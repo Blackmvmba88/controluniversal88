@@ -1,15 +1,13 @@
 const http = require('http');
 const fs = require('fs');
+const { getBaseUrl, getHttpRequestOptions } = require('./test_urls');
 
 function postStart(label, count, save) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({ label, count, save });
     const req = http.request(
       {
-        method: 'POST',
-        host: 'localhost',
-        port: 8080,
-        path: '/api/collect/start',
+        ...getHttpRequestOptions('/api/collect/start', 'POST'),
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
       },
       (res) => {
@@ -27,7 +25,7 @@ function postStart(label, count, save) {
 function getStatus() {
   return new Promise((resolve, reject) => {
     http
-      .get('http://localhost:8080/api/collect/status', (res) => {
+      .get(`${getBaseUrl()}/api/collect/status`, (res) => {
         let b = '';
         res.on('data', (d) => (b += d));
         res.on('end', () => {
@@ -71,10 +69,7 @@ async function testGuidedApiFlow() {
     const data = JSON.stringify(final);
     const req = http.request(
       {
-        method: 'POST',
-        host: 'localhost',
-        port: 8080,
-        path: '/api/save-map',
+        ...getHttpRequestOptions('/api/save-map', 'POST'),
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
       },
       (res) => {
