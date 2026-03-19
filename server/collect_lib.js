@@ -4,6 +4,29 @@ const core = require('./auto_map_core');
 const utils = require('./auto_map_utils');
 
 const DEFAULT_MAP = require('./daemon').mapping || null;
+const FALLBACK_BUTTON_MAP = {
+  cross: [5, 0x20],
+  circle: [5, 0x40],
+  square: [5, 0x10],
+  triangle: [5, 0x80],
+};
+
+function readJsonArray(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return [];
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function appendSamples(filePath, pairs) {
+  const existing = readJsonArray(filePath);
+  existing.push(...pairs);
+  fs.writeFileSync(filePath, JSON.stringify(existing, null, 2));
+  return existing;
+}
 
 async function collectSamples(
   { label, count = 3, timeout = 8000, simulate = process.env.SIMULATE === '1', save = true },
@@ -14,15 +37,7 @@ async function collectSamples(
   const pairs = [];
   if (simulate) {
     // deterministic simulation using default mapping if available, else use byte 5 mask 0x20 for cross
-    const simMap =
-      DEFAULT_MAP && DEFAULT_MAP.buttons
-        ? DEFAULT_MAP.buttons
-        : {
-            cross: [5, 0x20],
-            circle: [5, 0x40],
-            square: [5, 0x10],
-            triangle: [5, 0x80],
-          };
+    const simMap = DEFAULT_MAP && DEFAULT_MAP.buttons ? DEFAULT_MAP.buttons : FALLBACK_BUTTON_MAP;
     const [byteIdx, mask] = simMap[label] || [5, 0x20];
     for (let i = 0; i < count; i++) {
       const before = Array.from({ length: Math.max(8, byteIdx + 1) }, () => 0);
@@ -39,15 +54,7 @@ async function collectSamples(
     );
   }
 
-  // Save samples (always persist samples)
-  let existing = [];
-  try {
-    if (fs.existsSync(samplesPath)) existing = JSON.parse(fs.readFileSync(samplesPath, 'utf8'));
-  } catch (e) {
-    existing = [];
-  }
-  existing.push(...pairs);
-  fs.writeFileSync(samplesPath, JSON.stringify(existing, null, 2));
+  const existing = appendSamples(samplesPath, pairs);
 
   progressCb({ step: 'inferring' });
   const inferredButtons = core.inferMappingsFromLabeledReports(
@@ -76,7 +83,8 @@ async function collectSamples(
         fullMapping._failedPath = failedPath;
       }
     } catch (e) {
-      /* ignore */
+      fullMapping._saved = false;
+      fullMapping._saveError = e.message || String(e);
     }
   }
 

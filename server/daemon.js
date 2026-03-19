@@ -18,6 +18,11 @@ const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
 const logger = require('./logger');
+const {
+  detectSensorCandidates,
+  findMostVariableByte,
+  findSingleBitChange,
+} = require('./auto_map_core');
 
 // Variables de entorno para controlar el comportamiento del daemon
 const SIMULATE = process.env.SIMULATE === '1' || process.env.SIMULATE === 'true';
@@ -108,6 +113,7 @@ class Daemon extends EventEmitter {
     this.prevState = null;
     this._device = null;
     this._recent = []; // Reportes recientes para detección heurística
+    this._maxRecentReports = 8;
 
     // Caché para optimizar búsquedas repetidas en mapeo
     this._axesCache = null;
@@ -136,6 +142,13 @@ class Daemon extends EventEmitter {
       this.mapping && this.mapping.dpad && typeof this.mapping.dpad === 'object'
         ? this.mapping.dpad
         : null;
+  }
+
+  _pushRecentReport(report) {
+    this._recent.push(report);
+    if (this._recent.length > this._maxRecentReports) {
+      this._recent.splice(0, this._recent.length - this._maxRecentReports);
+    }
   }
 
   /**
@@ -331,10 +344,8 @@ class Daemon extends EventEmitter {
     if (!this._recent) {
       this._recent = [];
     }
-    this._recent.push(Array.from(b));
-    if (this._recent.length > 8) {
-      this._recent.shift(); // Eliminar el más antiguo
-    }
+    const rawArray = Array.from(b);
+    this._pushRecentReport(rawArray);
 
     /**
      * Función auxiliar para obtener un byte de forma segura
@@ -407,6 +418,9 @@ class Daemon extends EventEmitter {
      * Cada botón se mapea a un byte específico y una máscara de bit
      */
     state.buttons = {};
+    const prevRaw = this.prevState && this.prevState.raw ? Array.from(this.prevState.raw) : null;
+    const singleBitChange =
+      prevRaw && prevRaw.length > 0 ? findSingleBitChange(prevRaw, rawArray) : null;
     // Usar caché en lugar de acceder al mapeo cada vez
     for (const [name, pair] of Object.entries(this._buttonsCache)) {
       // Validar que el mapeo del botón tiene el formato correcto
@@ -429,15 +443,10 @@ class Daemon extends EventEmitter {
          * Esto ayuda con variantes Bluetooth que pueden tener estructura diferente.
          */
         if (!state.buttons[name] && this.prevState && this.prevState.raw) {
-          const prevRaw = Array.from(this.prevState.raw);
-          const curRaw = Array.from(b);
           const prevMappedVal = (this.prevState.raw && this.prevState.raw[byteIdx]) || 0;
 
           if (prevMappedVal === val && val === 0) {
-            const { findSingleBitChange } = require('../server/auto_map_core');
-            const single = findSingleBitChange(prevRaw, curRaw);
-
-            if (single && (single.xor & (mask || 0)) !== 0) {
+            if (singleBitChange && (singleBitChange.xor & (mask || 0)) !== 0) {
               state.buttons[name] = true;
             }
           }
@@ -449,15 +458,9 @@ class Daemon extends EventEmitter {
          */
         state.buttons[name] = false;
         if (this.prevState && this.prevState.raw) {
-          // compute diffs between previous raw and current
-          const prevRaw = Array.from(this.prevState.raw);
-          const curRaw = Array.from(b);
-          // try to find a single-bit change
-          const { findSingleBitChange } = require('../server/auto_map_core');
-          const single = findSingleBitChange(prevRaw, curRaw);
-          if (single) {
+          if (singleBitChange) {
             // if change matches mask, consider this a press
-            if ((single.xor & (mask || 0)) !== 0) {
+            if ((singleBitChange.xor & (mask || 0)) !== 0) {
               state.buttons[name] = true;
             }
           }
@@ -572,7 +575,6 @@ class Daemon extends EventEmitter {
 
       // Si no hay valor válido y tenemos suficientes reportes recientes
       if (v === null && this._recent && this._recent.length >= 3) {
-        const { findMostVariableByte } = require('../server/auto_map_core');
         const candidateIdx = findMostVariableByte(this._recent);
 
         if (typeof candidateIdx === 'number') {
@@ -603,12 +605,10 @@ class Daemon extends EventEmitter {
    * @returns {Object} {mapping, recentReports, sensors}
    */
   getStatus() {
-    const core = require('./auto_map_core');
-
     return {
       mapping: this.mapping,
       recentReports: this._recent || [],
-      sensors: core.detectSensorCandidates(this._recent || []),
+      sensors: detectSensorCandidates(this._recent || []),
     };
   }
 
@@ -629,25 +629,13 @@ class Daemon extends EventEmitter {
 
     const outPath = path.join(process.cwd(), '.ds4map.json');
 
-    // Crear respaldo del archivo existente
-    try {
-      if (fs.existsSync(outPath)) {
-        const backupPath = `${outPath}.bak.${Date.now()}`;
-        fs.copyFileSync(outPath, backupPath);
-        logger.info('Respaldo creado:', backupPath);
-      }
-    } catch (e) {
-      logger.warn('No se pudo crear respaldo:', e.message);
-      // Continuar de todos modos - el respaldo no es crítico
-    }
-
     // Guardar nuevo mapeo
     try {
-      fs.writeFileSync(outPath, JSON.stringify(mappingObj, null, 2), 'utf8');
+      const savedPath = require('./auto_map_utils').saveMappingWithBackup(mappingObj, outPath);
       this.mapping = mappingObj;
       // Actualizar cachés con el nuevo mapeo
       this._updateCaches();
-      logger.info('Mapeo guardado exitosamente en', outPath);
+      logger.info('Mapeo guardado exitosamente en', savedPath);
     } catch (e) {
       logger.error('Error guardando mapeo:', e.message);
       throw new Error(`No se pudo guardar el mapeo: ${e.message}`);

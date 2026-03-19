@@ -62,4 +62,12 @@ function testAxisThreshold() {
   );
 }
 
-module.exports = { testButtonPressRelease, testAxisThreshold };
+function testRecentReportsRemainBounded() {
+  const d = new DaemonClass(DEFAULT_MAP);
+  for (let i = 0; i < 20; i++) {
+    d._handleBuffer(makeBuffer(12, { 1: i }));
+  }
+  assert(d._recent.length <= 8, 'recent report buffer should stay bounded');
+}
+
+module.exports = { testButtonPressRelease, testAxisThreshold, testRecentReportsRemainBounded };

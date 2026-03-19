@@ -19,6 +19,17 @@ async function testCollectLibValidation() {
     throw new Error('validation failed: ' + JSON.stringify(mapping._validation.details));
 }
 
+async function testCollectLibRecoversFromInvalidSamplesFile() {
+  fs.writeFileSync('.ds4map.samples.json', '{"broken":true}', 'utf8');
+  const mapping = await collectLib.collectSamples(
+    { label: 'circle', count: 1, simulate: true, save: false },
+    () => {}
+  );
+  if (!mapping || !mapping.buttons || !mapping.buttons.circle) {
+    throw new Error('should rebuild samples array and infer mapping');
+  }
+}
+
 function postAuto(count, save) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({ count, save });
@@ -78,4 +89,8 @@ async function testCollectAutoSaveEndpoint() {
   if (!fs.existsSync('.ds4map.json')) throw new Error('.ds4map.json should exist after save');
 }
 
-module.exports = { testCollectLibValidation, testCollectAutoSaveEndpoint };
+module.exports = {
+  testCollectLibValidation,
+  testCollectLibRecoversFromInvalidSamplesFile,
+  testCollectAutoSaveEndpoint,
+};

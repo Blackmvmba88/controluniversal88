@@ -18,6 +18,16 @@
  * @returns {Array<Object>} Array de diferencias: [{idx, before, after, xor}]
  * @throws {TypeError} Si los parámetros no son arrays
  */
+function popCount(x) {
+  if (typeof x !== 'number' || x < 0) return 0;
+  let count = 0;
+  while (x) {
+    count++;
+    x &= x - 1;
+  }
+  return count;
+}
+
 function printDiff(prev, cur) {
   // Validación robusta de entradas
   if (!Array.isArray(prev)) {
@@ -80,23 +90,6 @@ function chooseCandidateFromDiffs(diffs) {
   // (menor número de bits activados en el XOR)
   let best = null;
   let bestCount = Infinity;
-
-  /**
-   * Cuenta el número de bits activados en un entero (población/popcount)
-   * Implementación eficiente usando operaciones bitwise
-   * @param {number} x - Entero a analizar
-   * @returns {number} Número de bits en 1
-   */
-  const popCount = (x) => {
-    if (typeof x !== 'number' || x < 0) return 0;
-    // Algoritmo de Brian Kernighan: más eficiente que conversión a string
-    let count = 0;
-    while (x) {
-      count++;
-      x &= x - 1; // Elimina el bit más bajo activado
-    }
-    return count;
-  };
 
   for (const d of diffs) {
     if (!d || typeof d.xor !== 'number' || typeof d.idx !== 'number') {
